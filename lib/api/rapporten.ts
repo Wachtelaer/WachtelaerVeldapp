@@ -1,6 +1,7 @@
 import * as Crypto from 'expo-crypto';
 
 import { supabase } from '@/lib/supabase';
+import { resolveImageBlob } from '@/lib/photoUpload';
 import type { Weer, Werfrapport, WerfrapportFoto, WerfrapportReactie } from '@/lib/database.types';
 
 const FOTOS_BUCKET = 'werfrapport-fotos';
@@ -45,16 +46,11 @@ export async function createRapport(input: NieuwRapportInput): Promise<string> {
 
 export async function uploadFotos(werfId: string, rapportId: string, fotoUris: string[]) {
   for (const uri of fotoUris) {
-    const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
+    const { blob, ext, contentType } = await resolveImageBlob(uri);
     const filename = `${Crypto.randomUUID()}.${ext}`;
     const path = `${werfId}/${rapportId}/${filename}`;
 
-    const response = await fetch(uri);
-    const arrayBuffer = await response.arrayBuffer();
-
-    const { error: uploadError } = await supabase.storage
-      .from(FOTOS_BUCKET)
-      .upload(path, arrayBuffer, { contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}` });
+    const { error: uploadError } = await supabase.storage.from(FOTOS_BUCKET).upload(path, blob, { contentType });
     if (uploadError) throw uploadError;
 
     const { error: rowError } = await supabase

@@ -1,6 +1,7 @@
 import * as Crypto from 'expo-crypto';
 
 import { supabase } from '@/lib/supabase';
+import { resolveImageBlob } from '@/lib/photoUpload';
 import type { WerfChatBericht } from '@/lib/database.types';
 
 const CHAT_FOTOS_BUCKET = 'werfchat-fotos';
@@ -80,14 +81,10 @@ export interface SendMessageInput {
 export async function sendMessage(input: SendMessageInput) {
   let fotoStoragePath: string | null = null;
   if (input.fotoUri) {
-    const ext = input.fotoUri.split('.').pop()?.toLowerCase() || 'jpg';
+    const { blob, ext, contentType } = await resolveImageBlob(input.fotoUri);
     const filename = `${Crypto.randomUUID()}.${ext}`;
     const path = `${input.werfId}/${filename}`;
-    const response = await fetch(input.fotoUri);
-    const arrayBuffer = await response.arrayBuffer();
-    const { error: uploadError } = await supabase.storage
-      .from(CHAT_FOTOS_BUCKET)
-      .upload(path, arrayBuffer, { contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}` });
+    const { error: uploadError } = await supabase.storage.from(CHAT_FOTOS_BUCKET).upload(path, blob, { contentType });
     if (uploadError) throw uploadError;
     fotoStoragePath = path;
   }
