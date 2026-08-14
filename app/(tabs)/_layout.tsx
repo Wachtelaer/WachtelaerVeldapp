@@ -1,0 +1,39 @@
+import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
+
+import { colors, fonts } from '@/lib/theme';
+
+export default function TabsLayout() {
+  return (
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: { backgroundColor: colors.navy, borderTopColor: colors.ink, height: 60 },
+        tabBarActiveTintColor: colors.white,
+        tabBarInactiveTintColor: colors.navyText,
+        tabBarLabelStyle: {
+          fontFamily: fonts.monoMedium,
+          fontSize: 10,
+          letterSpacing: 0.6,
+          textTransform: 'uppercase',
+        },
+      }}>
+      <Tabs.Screen
+        name="werven"
+        options={{ title: 'Werven', tabBarIcon: ({ color, size }) => <Ionicons name="business" color={color} size={size} /> }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{ title: 'Chat', tabBarIcon: ({ color, size }) => <Ionicons name="chatbubbles" color={color} size={size} /> }}
+      />
+      <Tabs.Screen
+        name="plannen"
+        options={{ title: 'Plannen', tabBarIcon: ({ color, size }) => <Ionicons name="document-text" color={color} size={size} /> }}
+      />
+      <Tabs.Screen
+        name="meer"
+        options={{ title: 'Meer', tabBarIcon: ({ color, size }) => <Ionicons name="ellipsis-horizontal" color={color} size={size} /> }}
+      />
+    </Tabs>
+  );
+}

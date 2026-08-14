@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="stylesheet" href="_ds/industry-a5e7040c-3ef7-4e75-899f-33a5a25aee00/styles.css"><script src="_ds/industry-a5e7040c-3ef7-4e75-899f-33a5a25aee00/_ds_bundle.js"></script><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"><style>body{margin:0;background:#e7e7ea;font-family:"Barlow",system-ui,sans-serif;color:#1d1f20}a{color:#416180}a:hover{color:#2c455d}.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08)}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}.dv-tid{font:600 10px "IBM Plex Mono",monospace;padding:3px 7px;background:#1d1f20;color:#fff;text-decoration:none}.dv-tname{font:600 13px/1.2 "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase}.dv-opts{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px}.dv-oid{font:600 10.5px "IBM Plex Mono",monospace;padding:3px 7px;background:rgba(29,31,32,.08);color:#1d1f20;text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 "Barlow",sans-serif;color:rgba(29,31,32,.6)}.dv-opt:target .dv-oid{background:#5980a6;color:#fff}.dv-next{margin:24px 0 0;font:12px/1.6 "Barlow",sans-serif;color:rgba(29,31,32,.55)}</style></helmet>
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Werfrapporten, foto's, plannen, chat, verlof & opmetingen voor verkoop</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2a"><div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Interactief prototype — wissel bovenaan van rol</div>
+<div style="width:390px;height:844px;background:#f2f2f3;border:1px solid #1d1f20;box-shadow:0 12px 32px rgba(43,43,45,.22);display:flex;flex-direction:column;position:relative;overflow:hidden;font-family:'Barlow',sans-serif">
+
+  <div style="height:30px;background:#1d1f20;color:#94bce3;display:flex;align-items:center;justify-content:space-between;padding:0 14px;font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.06em;flex:none">
+    <span>07:42</span><span>{{ netLabel }}</span>
+  </div>
+
+  <div style="flex:none;display:grid;grid-template-columns:repeat(4,1fr);background:#1d1f20;border-bottom:1px solid #2b2b2d">
+    <sc-for list="{{ rollen }}" as="r" hint-placeholder-count="3">
+      <sc-if value="{{ r.on }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ r.pick }}" style="min-height:34px;background:#5980a6;border:none;color:#fff;font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.03em;text-transform:uppercase;cursor:pointer">{{ r.naam }}</button>
+      </sc-if>
+      <sc-if value="{{ r.off }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ r.pick }}" style="min-height:34px;background:none;border:none;color:#7a7a7d;font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.03em;text-transform:uppercase;cursor:pointer" style-hover="color:#94bce3">{{ r.naam }}</button>
+      </sc-if>
+    </sc-for>
+  </div>
+
+  <div style="background:#1d2d3d;color:#fff;padding:12px 16px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none">
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <div style="font:700 19px/1 'Barlow Condensed',sans-serif;letter-spacing:.14em;text-transform:uppercase">Wachtelaer</div>
+      <div style="font:400 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#94bce3">{{ screenKicker }}</div>
+    </div>
+    <button onClick="{{ toggleNet }}" style="min-height:44px;min-width:44px;display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:1px solid rgba(255,255,255,.35);color:#fff;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;padding:0 10px;cursor:pointer" style-hover="background:rgba(255,255,255,.12)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 20h.01"></path><path d="M8.5 16.4a5 5 0 0 1 7 0"></path><path d="M5 12.9a10 10 0 0 1 14 0"></path></svg>{{ netBtn }}
+    </button>
+  </div>
+
+  <sc-if value="{{ offline }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:none;background:#d6ebff;border-bottom:1px solid rgba(29,31,32,.16);padding:8px 16px;display:flex;align-items:center;gap:8px;font:500 12px 'Barlow',sans-serif;color:#2c455d">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 20h.01"></path><path d="m2 8 20 8"></path><path d="M5 12.9a10 10 0 0 1 6-2.8"></path></svg>
+      Geen verbinding — {{ queueLabel }}
+    </div>
+  </sc-if>
+
+  <div style="flex:1;overflow:auto;background:#f2f2f3">
+
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+    <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid rgba(29,31,32,.16);padding-bottom:8px">
+        <div style="font:600 24px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.04em">{{ homeTitel }}</div>
+        <div style="font:400 11px 'IBM Plex Mono',monospace;color:#5d5d60">{{ homeMeta }}</div>
+      </div>
+
+      <sc-if value="{{ isMgmt }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:rgba(29,31,32,.16);border:1px solid rgba(29,31,32,.16)">
+          <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="3">
+            <div style="background:#f2f2f3;padding:10px 8px">
+              <div style="font:600 26px/1 'Barlow Condensed',sans-serif;color:#1d2d3d">{{ k.v }}</div>
+              <div style="font:400 9.5px/1.2 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:#5d5d60;margin-top:4px">{{ k.k }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isWerfleider }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ startRapport }}" style="min-height:56px;background:#5980a6;border:1px solid #416180;color:#fff;font:600 15px 'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px" style-hover="background:#416180">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path><path d="M14 2v6h6"></path><path d="M9 15h6"></path><path d="M9 11h3"></path></svg>
+          Werfrapport van vandaag
+        </button>
+      </sc-if>
+
+      <sc-if value="{{ isSales }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <button onClick="{{ goModules }}" style="min-height:56px;background:#5980a6;border:1px solid #416180;color:#fff;font:600 15px 'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px" style-hover="background:#416180">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+            Nieuwe opmeting bij klant
+          </button>
+          <div>
+            <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#5d5d60;margin-bottom:8px">Opmetingen</div>
+            <sc-for list="{{ opmetingen }}" as="o" hint-placeholder-count="3">
+              <div style="border:1px solid rgba(29,31,32,.16);border-left:3px solid #5980a6;padding:12px;margin-bottom:8px;display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                  <span style="font:600 17px/1.1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em">{{ o.klant }}</span>
+                  <span style="font:500 11px 'IBM Plex Mono',monospace;color:#416180;white-space:nowrap">{{ o.datum }}</span>
+                </div>
+                <div style="font:400 13px/1.35 'Barlow',sans-serif;color:#5d5d60">{{ o.module }} · {{ o.detail }}</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <span style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;background:#e7e7ea;border:1px solid rgba(29,31,32,.16);color:#424244">{{ o.fotos }}</span>
+                  <span style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;background:#5980a6;color:#fff">{{ o.status }}</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <div>
+        <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#5d5d60;margin-bottom:8px">Werven</div>
+        <sc-for list="{{ werven }}" as="w" hint-placeholder-count="3">
+          <button onClick="{{ w.open }}" style="width:100%;text-align:left;background:none;border:1px solid rgba(29,31,32,.16);border-left:3px solid #5980a6;padding:12px;margin-bottom:8px;cursor:pointer;display:flex;flex-direction:column;gap:7px;min-height:44px" style-hover="background:#fff;border-color:#5980a6">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+              <span style="font:600 17px/1.1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em">{{ w.naam }}</span>
+              <span style="font:500 12px 'IBM Plex Mono',monospace;color:#416180;white-space:nowrap">{{ w.fase }}</span>
+            </div>
+            <div style="font:400 13px/1.35 'Barlow',sans-serif;color:#5d5d60">{{ w.laatste }}</div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <span style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;background:#e7e7ea;border:1px solid rgba(29,31,32,.16);color:#424244">{{ w.fotoLabel }}</span>
+              <span style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;background:#e7e7ea;border:1px solid rgba(29,31,32,.16);color:#424244">{{ w.planLabel }}</span>
+              <sc-if value="{{ w.knelpunt }}" hint-placeholder-val="{{ true }}">
+                <span style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;background:#5980a6;color:#fff">knelpunt</span>
+              </sc-if>
+            </div>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isWerf }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column">
+      <button onClick="{{ goHome }}" style="min-height:44px;display:flex;align-items:center;gap:6px;background:none;border:none;border-bottom:1px solid rgba(29,31,32,.16);padding:0 16px;cursor:pointer;font:500 12px 'IBM Plex Mono',monospace;color:#416180;text-align:left" style-hover="background:#eef6ff">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m15 18-6-6 6-6"></path></svg>Werven
+      </button>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
+        <div>
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#5d5d60">Dossier {{ cur.code }}</div>
+          <div style="font:700 26px/1.05 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.02em;margin-top:4px">{{ cur.naam }}</div>
+          <div style="font:400 14px/1.4 'Barlow',sans-serif;color:#5d5d60;margin-top:4px">{{ cur.adres }} · werfleider {{ cur.leider }}</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button onClick="{{ goChat }}" style="min-height:48px;background:none;border:1px solid rgba(29,31,32,.3);font:600 13px 'Barlow Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;color:#1d1f20;display:flex;align-items:center;justify-content:center;gap:7px" style-hover="background:#eef6ff;border-color:#5980a6">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5980a6" stroke-width="1.5" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"></path></svg>Werfchat
+          </button>
+          <button onClick="{{ goPlannen }}" style="min-height:48px;background:none;border:1px solid rgba(29,31,32,.3);font:600 13px 'Barlow Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;color:#1d1f20;display:flex;align-items:center;justify-content:center;gap:7px" style-hover="background:#eef6ff;border-color:#5980a6">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5980a6" stroke-width="1.5" stroke-linecap="round"><path d="M4 4h16v16H4z"></path><path d="M4 10h16"></path><path d="M10 4v16"></path></svg>Plannen
+          </button>
+        </div>
+
+        <sc-if value="{{ isWerfleider }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ startRapport }}" style="min-height:52px;background:#5980a6;border:1px solid #416180;color:#fff;font:600 15px 'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer" style-hover="background:#416180">Rapport van vandaag maken</button>
+        </sc-if>
+
+        <div>
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#5d5d60;margin-bottom:8px">Werfrapporten</div>
+          <sc-for list="{{ rapporten }}" as="r" hint-placeholder-count="3">
+            <button onClick="{{ r.open }}" style="width:100%;text-align:left;background:none;border:1px solid rgba(29,31,32,.16);padding:11px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px" style-hover="background:#fff;border-color:#5980a6">
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <span style="font:600 15px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.04em">{{ r.datum }} · {{ r.auteur }}</span>
+                <span style="font:400 12px/1.3 'Barlow',sans-serif;color:#5d5d60">{{ r.kort }}</span>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5980a6" stroke-width="1.5" stroke-linecap="round"><path d="m9 18 6-6-6-6"></path></svg>
+            </button>
+          </sc-for>
+        </div>
+
+        <div>
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#5d5d60;margin-bottom:8px">Recente foto's</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+            <sc-for list="{{ werffotos }}" as="f" hint-placeholder-count="6">
+              <div style="position:relative;aspect-ratio:1;border:1px solid rgba(29,31,32,.3);background:repeating-linear-gradient(45deg,#e7e7ea 0 6px,#d4d4d7 6px 12px);display:flex;align-items:flex-end;padding:4px">
+                <span style="font:500 8.5px 'IBM Plex Mono',monospace;text-transform:uppercase;background:#f2f2f3;border:1px solid rgba(29,31,32,.3);padding:1px 3px">{{ f.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isRapport }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column">
+      <button onClick="{{ goWerf }}" style="min-height:44px;display:flex;align-items:center;gap:6px;background:none;border:none;border-bottom:1px solid rgba(29,31,32,.16);padding:0 16px;cursor:pointer;font:500 12px 'IBM Plex Mono',monospace;color:#416180" style-hover="background:#eef6ff"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m15 18-6-6 6-6"></path></svg>{{ cur.naam }}</button>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
+        <div>
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#5d5d60">Werfrapport · gedeeld met management + werf</div>
+          <div style="font:700 26px/1.05 'Barlow Condensed',sans-serif;text-transform:uppercase;margin-top:4px">Donderdag 13 aug</div>
+          <div style="font:400 13px 'Barlow',sans-serif;color:#5d5d60;margin-top:3px">Kris Van Damme · 17:40 · droog, 24°</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(29,31,32,.16);border:1px solid rgba(29,31,32,.16)">
+          <div style="background:#f2f2f3;padding:10px"><div style="font:400 10px 'IBM Plex Mono',monospace;color:#5d5d60;text-transform:uppercase;letter-spacing:.08em">Aanwezig</div><div style="font:500 14px 'Barlow',sans-serif;margin-top:3px">4 eigen · 2 onderaanneming</div></div>
+          <div style="background:#f2f2f3;padding:10px"><div style="font:400 10px 'IBM Plex Mono',monospace;color:#5d5d60;text-transform:uppercase;letter-spacing:.08em">Voortgang</div><div style="font:500 14px 'Barlow',sans-serif;margin-top:3px">62% · op schema</div></div>
+        </div>
+        <sc-for list="{{ rapportBlokken }}" as="b" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#416180;border-bottom:1px solid rgba(29,31,32,.16);padding-bottom:5px">{{ b.kop }}</div>
+            <div style="font:400 14px/1.5 'Barlow',sans-serif">{{ b.tekst }}</div>
+          </div>
+        </sc-for>
+        <div>
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#416180;border-bottom:1px solid rgba(29,31,32,.16);padding-bottom:5px;margin-bottom:8px">Foto's van het rapport</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <sc-for list="{{ rapportFotos }}" as="f" hint-placeholder-count="4">
+              <div style="position:relative;aspect-ratio:4/3;border:1px solid rgba(29,31,32,.3);background:repeating-linear-gradient(45deg,#e7e7ea 0 6px,#d4d4d7 6px 12px);display:flex;align-items:flex-end;padding:6px">
+                <span style="font:500 9.5px 'IBM Plex Mono',monospace;text-transform:uppercase;background:#f2f2f3;border:1px solid rgba(29,31,32,.3);padding:2px 4px">{{ f.label }}</span>
+                <i style="position:absolute;left:-1px;top:-1px;width:7px;height:7px;border-left:1px solid #5980a6;border-top:1px solid #5980a6"></i>
+                <i style="position:absolute;right:-1px;bottom:-1px;width:7px;height:7px;border-right:1px solid #5980a6;border-bottom:1px solid #5980a6"></i>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="border:1px solid rgba(29,31,32,.16);padding:12px;display:flex;flex-direction:column;gap:10px">
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Reacties</div>
+          <sc-for list="{{ reacties }}" as="c" hint-placeholder-count="2">
+            <div style="display:flex;flex-direction:column;gap:3px;border-left:2px solid #94bce3;padding-left:9px">
+              <span style="font:600 11px 'IBM Plex Mono',monospace;color:#416180">{{ c.van }} · {{ c.tijd }}</span>
+              <span style="font:400 13px/1.4 'Barlow',sans-serif">{{ c.tekst }}</span>
+            </div>
+          </sc-for>
+          <div style="display:flex;gap:8px">
+            <input value="{{ reactie }}" onChange="{{ setReactie }}" placeholder="Reageer op dit rapport…" style="flex:1;min-height:44px;padding:0 10px;border:1px solid rgba(29,31,32,.3);background:#fff;font:400 14px 'Barlow',sans-serif;border-radius:0">
+            <button onClick="{{ sendReactie }}" style="min-width:44px;height:44px;background:#5980a6;border:1px solid #416180;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="background:#416180"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isNieuw }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column">
+      <button onClick="{{ goWerf }}" style="min-height:44px;display:flex;align-items:center;gap:6px;background:none;border:none;border-bottom:1px solid rgba(29,31,32,.16);padding:0 16px;cursor:pointer;font:500 12px 'IBM Plex Mono',monospace;color:#416180" style-hover="background:#eef6ff"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m15 18-6-6 6-6"></path></svg>Annuleren</button>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
+        <div>
+          <div style="font:600 24px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em">Werfrapport 14 aug</div>
+          <div style="font:400 13px/1.45 'Barlow',sans-serif;color:#5d5d60;margin-top:5px">{{ cur.naam }} · alles wat je aanvinkt is meteen zichtbaar voor management en voor de ploeg op de werf.</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Weer & werkbaarheid</div>
+          <div style="display:flex;border:1px solid rgba(29,31,32,.3)">
+            <sc-for list="{{ weerOpties }}" as="w" hint-placeholder-count="3">
+              <sc-if value="{{ w.on }}" hint-placeholder-val="{{ false }}"><button onClick="{{ w.pick }}" style="flex:1;min-height:44px;background:#5980a6;color:#fff;border:none;font:600 12px 'Barlow Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer">{{ w.naam }}</button></sc-if>
+              <sc-if value="{{ w.off }}" hint-placeholder-val="{{ true }}"><button onClick="{{ w.pick }}" style="flex:1;min-height:44px;background:none;color:#1d1f20;border:none;border-left:1px solid rgba(29,31,32,.3);font:600 12px 'Barlow Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer" style-hover="background:#eef6ff">{{ w.naam }}</button></sc-if>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Wie was er?</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <sc-for list="{{ ploeg }}" as="p" hint-placeholder-count="5">
+              <sc-if value="{{ p.on }}" hint-placeholder-val="{{ false }}"><button onClick="{{ p.toggle }}" style="min-height:44px;padding:0 12px;background:#5980a6;border:1px solid #416180;color:#fff;font:500 14px 'Barlow',sans-serif;cursor:pointer">{{ p.naam }}</button></sc-if>
+              <sc-if value="{{ p.off }}" hint-placeholder-val="{{ true }}"><button onClick="{{ p.toggle }}" style="min-height:44px;padding:0 12px;background:none;border:1px solid rgba(29,31,32,.3);color:#1d1f20;font:500 14px 'Barlow',sans-serif;cursor:pointer" style-hover="background:#eef6ff;border-color:#5980a6">{{ p.naam }}</button></sc-if>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <label style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Uitgevoerd vandaag</label>
+          <textarea value="{{ uitgevoerd }}" onChange="{{ setUitgevoerd }}" rows="3" placeholder="Leidingwerk verdiep 1 afgewerkt, collectoren geplaatst…" style="font:400 15px/1.4 'Barlow',sans-serif;padding:10px;border:1px solid rgba(29,31,32,.3);background:#fff;resize:none;border-radius:0"></textarea>
+          <div style="display:flex;gap:7px;align-items:center;font:400 11px 'IBM Plex Mono',monospace;color:#5d5d60"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5980a6" stroke-width="1.5" stroke-linecap="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><path d="M12 19v3"></path></svg>dicteren werkt ook zonder verbinding</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <label style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Knelpunt of vraag</label>
+          <textarea value="{{ knelpunt }}" onChange="{{ setKnelpunt }}" rows="2" placeholder="Sparingen verdiep 2 zitten 15 cm verkeerd — plan nazien met architect" style="font:400 15px/1.4 'Barlow',sans-serif;padding:10px;border:1px solid rgba(29,31,32,.3);background:#fff;resize:none;border-radius:0"></textarea>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Foto's ({{ fotoAantal }})</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <sc-for list="{{ nieuweFotos }}" as="f" hint-placeholder-count="2">
+              <div style="aspect-ratio:1;border:1px solid rgba(29,31,32,.3);background:repeating-linear-gradient(45deg,#e7e7ea 0 6px,#d4d4d7 6px 12px);display:flex;align-items:flex-end;padding:5px"><span style="font:500 9px 'IBM Plex Mono',monospace;background:#f2f2f3;border:1px solid rgba(29,31,32,.3);padding:1px 3px">{{ f.label }}</span></div>
+            </sc-for>
+            <button onClick="{{ addFoto }}" style="aspect-ratio:1;background:none;border:1px dashed rgba(29,31,32,.4);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:#416180;font:500 10px 'IBM Plex Mono',monospace" style-hover="background:#eef6ff;border-color:#5980a6">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3Z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>foto
+            </button>
+          </div>
+        </div>
+
+        <div style="border:1px solid rgba(29,31,32,.16);padding:12px;display:flex;flex-direction:column;gap:10px">
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Delen met</div>
+          <sc-for list="{{ delen }}" as="d" hint-placeholder-count="3">
+            <button onClick="{{ d.toggle }}" style="display:flex;align-items:center;gap:10px;background:none;border:none;padding:0;cursor:pointer;min-height:44px;text-align:left">
+              <sc-if value="{{ d.on }}" hint-placeholder-val="{{ true }}"><span style="width:22px;height:22px;background:#5980a6;border:1px solid #416180;display:flex;align-items:center;justify-content:center;flex:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M20 6 9 17l-5-5"></path></svg></span></sc-if>
+              <sc-if value="{{ d.off }}" hint-placeholder-val="{{ false }}"><span style="width:22px;height:22px;background:none;border:1px solid rgba(29,31,32,.4);flex:none"></span></sc-if>
+              <span style="display:flex;flex-direction:column"><span style="font:500 14px 'Barlow',sans-serif">{{ d.naam }}</span><span style="font:400 11.5px 'Barlow',sans-serif;color:#5d5d60">{{ d.sub }}</span></span>
+            </button>
+          </sc-for>
+        </div>
+
+        <button onClick="{{ publiceer }}" style="min-height:56px;background:#5980a6;border:1px solid #416180;color:#fff;font:600 15px 'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;margin-bottom:8px" style-hover="background:#416180">{{ publiceerLabel }}</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isKlaar }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:24px 16px;display:flex;flex-direction:column;gap:18px;align-items:flex-start">
+      <div style="width:56px;height:56px;border:1px solid #5980a6;display:flex;align-items:center;justify-content:center;background:#eef6ff"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#416180" stroke-width="1.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5"></path></svg></div>
+      <div><div style="font:700 26px/1.05 'Barlow Condensed',sans-serif;text-transform:uppercase">{{ klaarTitel }}</div><div style="font:400 14px/1.5 'Barlow',sans-serif;color:#5d5d60;margin-top:6px">{{ klaarTekst }}</div></div>
+      <div style="width:100%;border:1px solid rgba(29,31,32,.16);padding:12px;display:flex;flex-direction:column;gap:8px">
+        <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">{{ routingKop }}</div>
+        <sc-for list="{{ routing }}" as="r" hint-placeholder-count="3">
+          <div style="display:flex;justify-content:space-between;font:400 13px 'Barlow',sans-serif"><span>{{ r.k }}</span><span style="font:500 11px 'IBM Plex Mono',monospace;color:#416180">{{ r.v }}</span></div>
+        </sc-for>
+      </div>
+      <button onClick="{{ klaarTerug }}" style="width:100%;min-height:52px;background:none;border:1px solid rgba(29,31,32,.3);font:600 15px 'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;color:#1d1f20" style-hover="background:#eef6ff;border-color:#5980a6">{{ klaarBtn }}</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isChats }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+      <div style="font:600 24px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(29,31,32,.16);padding-bottom:8px">Chat</div>
+      <sc-for list="{{ threads }}" as="t" hint-placeholder-count="4">
+        <button onClick="{{ t.open }}" style="width:100%;text-align:left;background:none;border:1px solid rgba(29,31,32,.16);padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:5px;min-height:44px" style-hover="background:#fff;border-color:#5980a6">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+            <span style="font:600 16px/1.1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em">{{ t.titel }}</span>
+            <span style="font:400 10px 'IBM Plex Mono',monospace;color:#5d5d60;white-space:nowrap">{{ t.tijd }}</span>
+          </div>
+          <div style="font:400 13px/1.35 'Barlow',sans-serif;color:#5d5d60">{{ t.laatste }}</div>
+          <div style="display:flex;gap:6px"><span style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;padding:2px 5px;border:1px solid rgba(29,31,32,.16);background:#e7e7ea;color:#424244">{{ t.leden }}</span>
+          <sc-if value="{{ t.ongelezen }}" hint-placeholder-val="{{ true }}"><span style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;padding:2px 5px;background:#5980a6;color:#fff">nieuw</span></sc-if></div>
+        </button>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isChat }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;min-height:100%">
+      <button onClick="{{ goChats }}" style="min-height:44px;display:flex;align-items:center;gap:6px;background:none;border:none;border-bottom:1px solid rgba(29,31,32,.16);padding:0 16px;cursor:pointer;font:500 12px 'IBM Plex Mono',monospace;color:#416180" style-hover="background:#eef6ff"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m15 18-6-6 6-6"></path></svg>{{ cur.naam }} · 7 leden</button>
+      <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:10px">
+        <sc-for list="{{ msgs }}" as="m" hint-placeholder-count="4">
+          <sc-if value="{{ m.mine }}" hint-placeholder-val="{{ false }}">
+            <div style="align-self:flex-end;max-width:80%;background:#5980a6;color:#fff;border:1px solid #416180;padding:9px 11px">
+              <div style="font:400 14px/1.4 'Barlow',sans-serif">{{ m.tekst }}</div>
+              <div style="font:400 10px 'IBM Plex Mono',monospace;color:#d6ebff;margin-top:5px;text-align:right">{{ m.tijd }}</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ m.theirs }}" hint-placeholder-val="{{ true }}">
+            <div style="align-self:flex-start;max-width:80%;background:#fff;border:1px solid rgba(29,31,32,.16);padding:9px 11px">
+              <div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:#416180;margin-bottom:4px">{{ m.van }}</div>
+              <sc-if value="{{ m.foto }}" hint-placeholder-val="{{ false }}">
+                <div style="width:150px;aspect-ratio:4/3;border:1px solid rgba(29,31,32,.3);background:repeating-linear-gradient(45deg,#e7e7ea 0 6px,#d4d4d7 6px 12px);margin-bottom:6px;display:flex;align-items:flex-end;padding:5px"><span style="font:500 9px 'IBM Plex Mono',monospace;background:#f2f2f3;border:1px solid rgba(29,31,32,.3);padding:1px 3px">{{ m.fotoLabel }}</span></div>
+              </sc-if>
+              <sc-if value="{{ m.plan }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:8px;border:1px solid #94bce3;background:#eef6ff;padding:8px;margin-bottom:6px">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#416180" stroke-width="1.5" stroke-linecap="round"><path d="M4 4h16v16H4z"></path><path d="M4 10h16"></path><path d="M10 4v16"></path></svg>
+                  <span style="font:500 11px 'IBM Plex Mono',monospace;color:#2c455d">{{ m.planNaam }}</span>
+                </div>
+              </sc-if>
+              <div style="font:400 14px/1.4 'Barlow',sans-serif">{{ m.tekst }}</div>
+              <div style="font:400 10px 'IBM Plex Mono',monospace;color:#5d5d60;margin-top:5px">{{ m.tijd }}</div>
+            </div>
+          </sc-if>
+        </sc-for>
+      </div>
+      <div style="border-top:1px solid rgba(29,31,32,.16);padding:10px 12px;display:flex;gap:8px;background:#f5f5f8;position:sticky;bottom:0">
+        <button onClick="{{ addFoto }}" style="width:44px;height:44px;background:none;border:1px solid rgba(29,31,32,.3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#416180" style-hover="background:#eef6ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3Z"></path><circle cx="12" cy="13" r="3.5"></circle></svg></button>
+        <input value="{{ draft }}" onChange="{{ setDraft }}" placeholder="Bericht naar de werf…" style="flex:1;min-height:44px;padding:0 10px;border:1px solid rgba(29,31,32,.3);background:#fff;font:400 15px 'Barlow',sans-serif;border-radius:0">
+        <button onClick="{{ sendMsg }}" style="min-width:44px;height:44px;background:#5980a6;border:1px solid #416180;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="background:#416180"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg></button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isPlannen }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+      <div style="font:600 24px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(29,31,32,.16);padding-bottom:8px">Plannen & documenten</div>
+      <div style="font:400 13px/1.4 'Barlow',sans-serif;color:#5d5d60">Altijd de laatste versie. Wie de oude versie open had, krijgt een melding.</div>
+      <sc-for list="{{ plannen }}" as="p" hint-placeholder-count="4">
+        <div style="border:1px solid rgba(29,31,32,.16);padding:11px;display:flex;align-items:center;gap:11px;background:#fff">
+          <div style="width:44px;height:44px;border:1px solid rgba(29,31,32,.3);background:repeating-linear-gradient(45deg,#e7e7ea 0 4px,#d4d4d7 4px 8px);flex:none"></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+            <span style="font:500 14px 'Barlow',sans-serif">{{ p.naam }}</span>
+            <span style="font:400 11px 'IBM Plex Mono',monospace;color:#5d5d60">{{ p.meta }}</span>
+          </div>
+          <sc-if value="{{ p.nieuw }}" hint-placeholder-val="{{ false }}"><span style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;padding:3px 6px;background:#5980a6;color:#fff">nieuw</span></sc-if>
+        </div>
+      </sc-for>
+      <button style="min-height:48px;background:none;border:1px dashed rgba(29,31,32,.4);font:500 13px 'IBM Plex Mono',monospace;color:#416180;cursor:pointer;margin-top:4px" style-hover="background:#eef6ff">+ plan of pdf toevoegen</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isMeer }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+      <div style="font:600 24px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(29,31,32,.16);padding-bottom:8px">Meer</div>
+      <sc-for list="{{ meerItems }}" as="i" hint-placeholder-count="5">
+        <button onClick="{{ i.go }}" style="width:100%;min-height:56px;border:1px solid rgba(29,31,32,.16);background:none;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;text-align:left" style-hover="background:#fff;border-color:#5980a6">
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font:600 16px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.04em">{{ i.titel }}</span><span style="font:400 12px 'Barlow',sans-serif;color:#5d5d60">{{ i.sub }}</span></div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5980a6" stroke-width="1.5" stroke-linecap="round"><path d="m9 18 6-6-6-6"></path></svg>
+        </button>
+      </sc-for>
+      <div style="border:1px solid #94bce3;background:#eef6ff;padding:12px;margin-top:4px">
+        <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#2c455d">Werkbonnen</div>
+        <div style="font:400 13px/1.5 'Barlow',sans-serif;margin-top:5px;color:#1d1f20">Werkbonnen en facturatie blijven in jullie bestaande systeem. Deze app verwijst er enkel naar.</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isModules }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column">
+      <button onClick="{{ goHome }}" style="min-height:44px;display:flex;align-items:center;gap:6px;background:none;border:none;border-bottom:1px solid rgba(29,31,32,.16);padding:0 16px;cursor:pointer;font:500 12px 'IBM Plex Mono',monospace;color:#416180" style-hover="background:#eef6ff"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m15 18-6-6 6-6"></path></svg>Terug</button>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+        <div>
+          <div style="font:600 24px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em">Wat gaan we meten?</div>
+          <div style="font:400 13px/1.45 'Barlow',sans-serif;color:#5d5d60;margin-top:5px">Per domein een eigen vragenlijst — enkel wat de backoffice nodig heeft om de offerte te kunnen maken.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ modules }}" as="m" hint-placeholder-count="5">
+            <button onClick="{{ m.pick }}" style="width:100%;min-height:64px;background:none;border:1px solid rgba(29,31,32,.16);border-left:3px solid #5980a6;padding:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left" style-hover="background:#fff;border-color:#5980a6">
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <span style="font:600 18px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.04em">{{ m.naam }}</span>
+                <span style="font:400 12px/1.35 'Barlow',sans-serif;color:#5d5d60">{{ m.sub }}</span>
+              </div>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5980a6" stroke-width="1.5" stroke-linecap="round"><path d="m9 18 6-6-6-6"></path></svg>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isIntake }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column">
+      <button onClick="{{ goModules }}" style="min-height:44px;display:flex;align-items:center;gap:6px;background:none;border:none;border-bottom:1px solid rgba(29,31,32,.16);padding:0 16px;cursor:pointer;font:500 12px 'IBM Plex Mono',monospace;color:#416180" style-hover="background:#eef6ff"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m15 18-6-6 6-6"></path></svg>Ander domein</button>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
+        <div>
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#5d5d60">Opmeting · {{ modNaam }}</div>
+          <div style="font:700 25px/1.05 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.02em;margin-top:4px">Bij de klant</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Klant</div>
+          <input value="{{ kNaam }}" onChange="{{ setKNaam }}" placeholder="Naam" style="min-height:44px;padding:0 10px;border:1px solid rgba(29,31,32,.3);background:#fff;font:400 15px 'Barlow',sans-serif;border-radius:0">
+          <input value="{{ kAdres }}" onChange="{{ setKAdres }}" placeholder="Adres" style="min-height:44px;padding:0 10px;border:1px solid rgba(29,31,32,.3);background:#fff;font:400 15px 'Barlow',sans-serif;border-radius:0">
+          <input value="{{ kTel }}" onChange="{{ setKTel }}" placeholder="Telefoon of e-mail" style="min-height:44px;padding:0 10px;border:1px solid rgba(29,31,32,.3);background:#fff;font:400 15px 'Barlow',sans-serif;border-radius:0">
+        </div>
+
+        <sc-for list="{{ velden }}" as="v" hint-placeholder-count="6">
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">{{ v.label }}</div>
+            <sc-if value="{{ v.isKeuze }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <sc-for list="{{ v.opties }}" as="o" hint-placeholder-count="3">
+                  <sc-if value="{{ o.on }}" hint-placeholder-val="{{ false }}"><button onClick="{{ o.pick }}" style="min-height:44px;padding:0 12px;background:#5980a6;border:1px solid #416180;color:#fff;font:500 14px 'Barlow',sans-serif;cursor:pointer">{{ o.naam }}</button></sc-if>
+                  <sc-if value="{{ o.off }}" hint-placeholder-val="{{ true }}"><button onClick="{{ o.pick }}" style="min-height:44px;padding:0 12px;background:none;border:1px solid rgba(29,31,32,.3);color:#1d1f20;font:500 14px 'Barlow',sans-serif;cursor:pointer" style-hover="background:#eef6ff;border-color:#5980a6">{{ o.naam }}</button></sc-if>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ v.isNum }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="display:flex;align-items:center;border:1px solid rgba(29,31,32,.3)">
+                  <button onClick="{{ v.min }}" style="width:44px;height:44px;background:none;border:none;border-right:1px solid rgba(29,31,32,.3);cursor:pointer;font:500 18px 'Barlow',sans-serif;color:#1d1f20" style-hover="background:#eef6ff">−</button>
+                  <div style="min-width:52px;text-align:center;font:500 16px 'IBM Plex Mono',monospace">{{ v.waarde }}</div>
+                  <button onClick="{{ v.plus }}" style="width:44px;height:44px;background:none;border:none;border-left:1px solid rgba(29,31,32,.3);cursor:pointer;font:500 18px 'Barlow',sans-serif;color:#1d1f20" style-hover="background:#eef6ff">+</button>
+                </div>
+                <span style="font:400 12px 'IBM Plex Mono',monospace;color:#5d5d60">{{ v.eenheid }}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ v.isTekst }}" hint-placeholder-val="{{ false }}">
+              <input value="{{ v.waarde }}" onChange="{{ v.set }}" placeholder="{{ v.ph }}" style="min-height:44px;padding:0 10px;border:1px solid rgba(29,31,32,.3);background:#fff;font:400 15px 'Barlow',sans-serif;border-radius:0">
+            </sc-if>
+            <sc-if value="{{ v.isChips }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <sc-for list="{{ v.opties }}" as="o" hint-placeholder-count="4">
+                  <sc-if value="{{ o.on }}" hint-placeholder-val="{{ false }}"><button onClick="{{ o.pick }}" style="min-height:44px;padding:0 12px;background:#5980a6;border:1px solid #416180;color:#fff;font:500 14px 'Barlow',sans-serif;cursor:pointer">{{ o.naam }}</button></sc-if>
+                  <sc-if value="{{ o.off }}" hint-placeholder-val="{{ true }}"><button onClick="{{ o.pick }}" style="min-height:44px;padding:0 12px;background:none;border:1px solid rgba(29,31,32,.3);color:#1d1f20;font:500 14px 'Barlow',sans-serif;cursor:pointer" style-hover="background:#eef6ff;border-color:#5980a6">{{ o.naam }}</button></sc-if>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ v.hint }}" hint-placeholder-val="{{ false }}">
+              <div style="font:400 11.5px/1.4 'Barlow',sans-serif;color:#5d5d60">{{ v.hintTekst }}</div>
+            </sc-if>
+          </div>
+        </sc-for>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Foto's & opmeting ({{ fotoAantal }})</div>
+          <div style="font:400 12px/1.4 'Barlow',sans-serif;color:#5d5d60">{{ fotoTip }}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <sc-for list="{{ nieuweFotos }}" as="f" hint-placeholder-count="2">
+              <div style="aspect-ratio:1;border:1px solid rgba(29,31,32,.3);background:repeating-linear-gradient(45deg,#e7e7ea 0 6px,#d4d4d7 6px 12px);display:flex;align-items:flex-end;padding:5px"><span style="font:500 9px 'IBM Plex Mono',monospace;background:#f2f2f3;border:1px solid rgba(29,31,32,.3);padding:1px 3px">{{ f.label }}</span></div>
+            </sc-for>
+            <button onClick="{{ addFoto }}" style="aspect-ratio:1;background:none;border:1px dashed rgba(29,31,32,.4);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:#416180;font:500 10px 'IBM Plex Mono',monospace" style-hover="background:#eef6ff;border-color:#5980a6">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3Z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>foto
+            </button>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <label style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Wat wil de klant precies?</label>
+          <textarea value="{{ salesNota }}" onChange="{{ setSalesNota }}" rows="3" placeholder="Klant wil van stookolie weg, budget rond 15k, plaatsing najaar…" style="font:400 15px/1.4 'Barlow',sans-serif;padding:10px;border:1px solid rgba(29,31,32,.3);background:#fff;resize:none;border-radius:0"></textarea>
+        </div>
+
+        <div style="border:1px solid #94bce3;background:#eef6ff;padding:12px;display:flex;flex-direction:column;gap:5px">
+          <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#2c455d">Ontbreekt nog</div>
+          <div style="font:400 13.5px/1.45 'Barlow',sans-serif">{{ ontbreekt }}</div>
+        </div>
+
+        <button onClick="{{ verstuurOpmeting }}" style="min-height:56px;background:#5980a6;border:1px solid #416180;color:#fff;font:600 15px 'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;margin-bottom:8px" style-hover="background:#416180">{{ opmetingBtn }}</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isVerlof }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column">
+      <button onClick="{{ goMeer }}" style="min-height:44px;display:flex;align-items:center;gap:6px;background:none;border:none;border-bottom:1px solid rgba(29,31,32,.16);padding:0 16px;cursor:pointer;font:500 12px 'IBM Plex Mono',monospace;color:#416180" style-hover="background:#eef6ff"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m15 18-6-6 6-6"></path></svg>Meer</button>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
+
+        <sc-if value="{{ isMgmt }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div>
+              <div style="font:600 24px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em">Verlofaanvragen</div>
+              <div style="font:400 13px/1.45 'Barlow',sans-serif;color:#5d5d60;margin-top:5px">Je ziet meteen wie er op die dagen al weg is en op welke werf die persoon staat.</div>
+            </div>
+            <sc-for list="{{ teKeuren }}" as="a" hint-placeholder-count="2">
+              <div style="border:1px solid rgba(29,31,32,.16);background:#fff;padding:12px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                  <span style="font:600 17px/1.1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em">{{ a.wie }}</span>
+                  <span style="font:500 11px 'IBM Plex Mono',monospace;color:#416180">{{ a.dagen }}</span>
+                </div>
+                <div style="font:400 13.5px/1.45 'Barlow',sans-serif">{{ a.periode }} · {{ a.type }}</div>
+                <div style="font:400 12px/1.4 'Barlow',sans-serif;color:#5d5d60">{{ a.impact }}</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <button onClick="{{ a.keur }}" style="min-height:44px;background:#5980a6;border:1px solid #416180;color:#fff;font:600 13px 'Barlow Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer" style-hover="background:#416180">Goedkeuren</button>
+                  <button onClick="{{ a.weiger }}" style="min-height:44px;background:none;border:1px solid rgba(29,31,32,.3);color:#1d1f20;font:600 13px 'Barlow Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer" style-hover="background:#eef6ff;border-color:#5980a6">Weigeren</button>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ geenTeKeuren }}" hint-placeholder-val="{{ false }}">
+              <div style="border:1px dashed rgba(29,31,32,.4);padding:14px;font:400 13px 'Barlow',sans-serif;color:#5d5d60">Niets meer te beoordelen.</div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ nietMgmt }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div>
+              <div style="font:600 24px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em">Verlof aanvragen</div>
+              <div style="font:400 13px/1.45 'Barlow',sans-serif;color:#5d5d60;margin-top:5px">Je aanvraag gaat naar {{ goedkeurder }}. Je ziet er meteen bij of er die dagen al iemand van jouw werf weg is.</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:rgba(29,31,32,.16);border:1px solid rgba(29,31,32,.16)">
+              <sc-for list="{{ saldo }}" as="k" hint-placeholder-count="3">
+                <div style="background:#f2f2f3;padding:10px 8px">
+                  <div style="font:600 24px/1 'Barlow Condensed',sans-serif;color:#1d2d3d">{{ k.v }}</div>
+                  <div style="font:400 9.5px/1.2 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:#5d5d60;margin-top:4px">{{ k.k }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Soort</div>
+              <div style="display:flex;border:1px solid rgba(29,31,32,.3)">
+                <sc-for list="{{ verlofTypes }}" as="t" hint-placeholder-count="3">
+                  <sc-if value="{{ t.on }}" hint-placeholder-val="{{ false }}"><button onClick="{{ t.pick }}" style="flex:1;min-height:44px;background:#5980a6;color:#fff;border:none;font:600 12px 'Barlow Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer">{{ t.naam }}</button></sc-if>
+                  <sc-if value="{{ t.off }}" hint-placeholder-val="{{ true }}"><button onClick="{{ t.pick }}" style="flex:1;min-height:44px;background:none;color:#1d1f20;border:none;border-left:1px solid rgba(29,31,32,.3);font:600 12px 'Barlow Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer" style-hover="background:#eef6ff">{{ t.naam }}</button></sc-if>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Van</label>
+                <input type="date" value="{{ van }}" onChange="{{ setVan }}" style="min-height:44px;padding:0 8px;border:1px solid rgba(29,31,32,.3);background:#fff;font:400 14px 'Barlow',sans-serif;border-radius:0">
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Tot</label>
+                <input type="date" value="{{ tot }}" onChange="{{ setTot }}" style="min-height:44px;padding:0 8px;border:1px solid rgba(29,31,32,.3);background:#fff;font:400 14px 'Barlow',sans-serif;border-radius:0">
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <label style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Nota (optioneel)</label>
+              <textarea value="{{ verlofNota }}" onChange="{{ setVerlofNota }}" rows="2" placeholder="Halve dag op vrijdag volstaat ook" style="font:400 15px/1.4 'Barlow',sans-serif;padding:10px;border:1px solid rgba(29,31,32,.3);background:#fff;resize:none;border-radius:0"></textarea>
+            </div>
+
+            <div style="border:1px solid #94bce3;background:#eef6ff;padding:12px;display:flex;flex-direction:column;gap:5px">
+              <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#2c455d">Op die dagen</div>
+              <div style="font:400 13.5px/1.45 'Barlow',sans-serif">{{ conflict }}</div>
+            </div>
+
+            <button onClick="{{ vraagVerlof }}" style="min-height:56px;background:#5980a6;border:1px solid #416180;color:#fff;font:600 15px 'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer" style-hover="background:#416180">{{ verlofBtn }}</button>
+
+            <div>
+              <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#5d5d60;margin-bottom:8px">Mijn aanvragen</div>
+              <sc-for list="{{ mijnVerlof }}" as="a" hint-placeholder-count="3">
+                <div style="border:1px solid rgba(29,31,32,.16);padding:11px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+                  <div style="display:flex;flex-direction:column;gap:3px">
+                    <span style="font:500 14px 'Barlow',sans-serif">{{ a.periode }}</span>
+                    <span style="font:400 11px 'IBM Plex Mono',monospace;color:#5d5d60">{{ a.type }} · {{ a.dagen }}</span>
+                  </div>
+                  <sc-if value="{{ a.goed }}" hint-placeholder-val="{{ false }}"><span style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;padding:3px 6px;background:#5980a6;color:#fff">goedgekeurd</span></sc-if>
+                  <sc-if value="{{ a.wacht }}" hint-placeholder-val="{{ true }}"><span style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;padding:3px 6px;background:#e7e7ea;border:1px solid rgba(29,31,32,.16);color:#424244">in behandeling</span></sc-if>
+                  <sc-if value="{{ a.nee }}" hint-placeholder-val="{{ false }}"><span style="font:500 10px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;padding:3px 6px;border:1px solid #5980a6;color:#2c455d">geweigerd</span></sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </sc-if>
+
+  </div>
+
+  <div style="flex:none;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;background:#1d2d3d;border-top:1px solid #1d1f20">
+    <sc-for list="{{ tabs }}" as="tab" hint-placeholder-count="4">
+      <sc-if value="{{ tab.on }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ tab.go }}" style="min-height:60px;background:#5980a6;border:none;color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase"><span style="width:8px;height:8px;background:#fff"></span>{{ tab.naam }}</button>
+      </sc-if>
+      <sc-if value="{{ tab.off }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ tab.go }}" style="min-height:60px;background:none;border:none;color:#94bce3;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase" style-hover="background:rgba(255,255,255,.08)"><span style="width:8px;height:8px;border:1px solid #94bce3"></span>{{ tab.naam }}</button>
+      </sc-if>
+    </sc-for>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="2b"><div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Wat dit is — en wat het niet is</div>
+<div style="width:380px;display:flex;flex-direction:column;gap:14px">
+  <div style="background:#1d2d3d;color:#fff;padding:16px">
+    <div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#94bce3">Uitgangspunt</div>
+    <div style="font:400 14px/1.5 'Barlow',sans-serif;margin-top:8px">Eén plek om informatie te delen: foto's, plannen, werfrapporten en chat. De werfleiding schrijft het rapport, management en de ploeg op de werf lezen hetzelfde rapport. Werkbonnen blijven in jullie bestaande systeem.</div>
+  </div>
+  <sc-for list="{{ notes }}" as="n" hint-placeholder-count="6">
+    <div style="border:1px solid rgba(29,31,32,.16);background:#f2f2f3;padding:14px;position:relative">
+      <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#416180">{{ n.kop }}</div>
+      <div style="font:400 14px/1.5 'Barlow',sans-serif;margin-top:6px;color:#1d1f20">{{ n.tekst }}</div>
+      <i style="position:absolute;left:-1px;top:-1px;width:8px;height:8px;border-left:1px solid #5980a6;border-top:1px solid #5980a6"></i>
+      <i style="position:absolute;right:-1px;top:-1px;width:8px;height:8px;border-right:1px solid #5980a6;border-top:1px solid #5980a6"></i>
+      <i style="position:absolute;left:-1px;bottom:-1px;width:8px;height:8px;border-left:1px solid #5980a6;border-bottom:1px solid #5980a6"></i>
+      <i style="position:absolute;right:-1px;bottom:-1px;width:8px;height:8px;border-right:1px solid #5980a6;border-bottom:1px solid #5980a6"></i>
+    </div>
+  </sc-for>
+  <div style="border:1px dashed rgba(29,31,32,.4);padding:14px">
+    <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Nog te beslissen</div>
+    <div style="font:400 13px/1.5 'Barlow',sans-serif;margin-top:6px;color:#5d5d60">Welk systeem de werkbonnen beheert (en of we ernaar linken) · of de klant/architect mee mag lezen · wie rapporten mag maken buiten de werfleiding · echte werffoto's en plannen voor de placeholders.</div>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="2c"><div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>Desktop (backoffice) — plannen toevoegen, zelfde app</div>
+<div style="width:1180px;background:#f2f2f3;border:1px solid #1d1f20;box-shadow:0 12px 32px rgba(43,43,45,.22);display:flex;flex-direction:column;font-family:'Barlow',sans-serif">
+  <div style="height:34px;background:#e7e7ea;border-bottom:1px solid rgba(29,31,32,.16);display:flex;align-items:center;gap:8px;padding:0 12px">
+    <span style="width:9px;height:9px;border:1px solid #7a7a7d"></span><span style="width:9px;height:9px;border:1px solid #7a7a7d"></span><span style="width:9px;height:9px;border:1px solid #7a7a7d"></span>
+    <div style="flex:1;display:flex;justify-content:center"><div style="min-width:380px;text-align:center;border:1px solid rgba(29,31,32,.2);background:#f5f5f8;font:400 11px 'IBM Plex Mono',monospace;color:#5d5d60;padding:3px 10px">app.wachtelaer.be/werven/W-2026-041/plannen</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:230px 1fr 300px;min-height:660px">
+    <div style="background:#1d2d3d;color:#fff;padding:16px 0;display:flex;flex-direction:column;gap:18px">
+      <div style="padding:0 16px">
+        <div style="font:700 18px/1 'Barlow Condensed',sans-serif;letter-spacing:.14em;text-transform:uppercase">Wachtelaer</div>
+        <div style="font:400 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#94bce3;margin-top:4px">Backoffice · Els</div>
+      </div>
+      <div style="display:flex;flex-direction:column">
+        <div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#7a7a7d;padding:0 16px 6px">Werven</div>
+        <div style="background:#5980a6;padding:10px 16px;font:600 14px 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase">Residentie Ter Beke</div>
+        <div style="padding:10px 16px;font:500 14px 'Barlow',sans-serif;color:#94bce3">Bakkerij De Smet</div>
+        <div style="padding:10px 16px;font:500 14px 'Barlow',sans-serif;color:#94bce3">Appartementen Kaaizicht</div>
+      </div>
+      <div style="display:flex;flex-direction:column;border-top:1px solid rgba(255,255,255,.14);padding-top:14px">
+        <div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#7a7a7d;padding:0 16px 6px">Dossier</div>
+        <div style="padding:9px 16px;font:500 14px 'Barlow',sans-serif;color:#94bce3">Werfrapporten</div>
+        <div style="padding:9px 16px;font:500 14px 'Barlow',sans-serif;color:#94bce3">Foto's</div>
+        <div style="padding:9px 16px;font:600 14px 'Barlow',sans-serif;color:#fff;border-left:3px solid #5980a6">Plannen & documenten</div>
+        <div style="padding:9px 16px;font:500 14px 'Barlow',sans-serif;color:#94bce3">Chat</div>
+        <div style="padding:9px 16px;font:500 14px 'Barlow',sans-serif;color:#94bce3">Opmetingen verkoop</div>
+      </div>
+    </div>
+
+    <div style="padding:24px 26px;display:flex;flex-direction:column;gap:20px;border-right:1px solid rgba(29,31,32,.16)">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid rgba(29,31,32,.16);padding-bottom:10px">
+        <div>
+          <div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#5d5d60">W-2026-041 · Aalst</div>
+          <div style="font:700 30px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.02em;margin-top:5px">Plannen & documenten</div>
+        </div>
+        <div style="font:400 11px 'IBM Plex Mono',monospace;color:#5d5d60">6 bestanden · 7 mensen met toegang</div>
+      </div>
+
+      <div style="position:relative;border:1px dashed #5980a6;background:#eef6ff;padding:30px;display:flex;flex-direction:column;align-items:center;gap:10px">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#416180" stroke-width="1.5" stroke-linecap="round"><path d="M12 16V4"></path><path d="m7 9 5-5 5 5"></path><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path></svg>
+        <div style="font:600 17px 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#1d2d3d">Sleep plannen of pdf's hierheen</div>
+        <div style="font:400 13px 'Barlow',sans-serif;color:#416180">Meerdere bestanden tegelijk · dwg, pdf, jpg · versienummer wordt automatisch verhoogd</div>
+        <button style="min-height:44px;padding:0 18px;background:#5980a6;border:1px solid #416180;color:#fff;font:600 13px 'Barlow Condensed',sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;margin-top:4px" style-hover="background:#416180">Bestanden kiezen</button>
+      </div>
+
+      <div>
+        <div style="display:grid;grid-template-columns:2.2fr 1fr 1fr 1.2fr;border:1px solid rgba(29,31,32,.16);background:#e7e7ea;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#424244">
+          <div style="padding:9px 12px">Bestand</div><div style="padding:9px 12px">Versie</div><div style="padding:9px 12px">Toegevoegd</div><div style="padding:9px 12px">Zichtbaar voor</div>
+        </div>
+        <sc-for list="{{ desktopPlannen }}" as="p" hint-placeholder-count="5">
+          <div style="display:grid;grid-template-columns:2.2fr 1fr 1fr 1.2fr;border:1px solid rgba(29,31,32,.16);border-top:none;background:#fff;align-items:center">
+            <div style="padding:11px 12px;display:flex;align-items:center;gap:10px">
+              <span style="width:26px;height:26px;border:1px solid rgba(29,31,32,.3);background:repeating-linear-gradient(45deg,#e7e7ea 0 4px,#d4d4d7 4px 8px);flex:none"></span>
+              <span style="font:500 14px 'Barlow',sans-serif">{{ p.naam }}</span>
+              <sc-if value="{{ p.nieuw }}" hint-placeholder-val="{{ false }}"><span style="font:500 9.5px 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;padding:2px 5px;background:#5980a6;color:#fff">nieuw</span></sc-if>
+            </div>
+            <div style="padding:11px 12px;font:500 12px 'IBM Plex Mono',monospace;color:#416180">{{ p.versie }}</div>
+            <div style="padding:11px 12px;font:400 12px 'IBM Plex Mono',monospace;color:#5d5d60">{{ p.datum }}</div>
+            <div style="padding:11px 12px;font:400 13px 'Barlow',sans-serif;color:#5d5d60">{{ p.zicht }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="padding:24px 20px;display:flex;flex-direction:column;gap:18px">
+      <div>
+        <div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#5d5d60">Bij publiceren</div>
+        <div style="font:400 13.5px/1.5 'Barlow',sans-serif;margin-top:7px">De ploeg op de werf krijgt een melding op de telefoon, met de vermelding dat er een nieuwere versie is dan die ze open hadden.</div>
+      </div>
+      <div style="border:1px solid rgba(29,31,32,.16);padding:12px;display:flex;flex-direction:column;gap:10px">
+        <div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Melding naar</div>
+        <div style="display:flex;align-items:center;gap:9px"><span style="width:20px;height:20px;background:#5980a6;border:1px solid #416180;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M20 6 9 17l-5-5"></path></svg></span><span style="font:400 13.5px 'Barlow',sans-serif">Ploeg Ter Beke (7)</span></div>
+        <div style="display:flex;align-items:center;gap:9px"><span style="width:20px;height:20px;background:#5980a6;border:1px solid #416180;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M20 6 9 17l-5-5"></path></svg></span><span style="font:400 13.5px 'Barlow',sans-serif">Werfleiding</span></div>
+        <div style="display:flex;align-items:center;gap:9px"><span style="width:20px;height:20px;border:1px solid rgba(29,31,32,.4)"></span><span style="font:400 13.5px 'Barlow',sans-serif;color:#5d5d60">Onderaanneming EL</span></div>
+      </div>
+      <div style="border:1px solid rgba(29,31,32,.16);padding:12px">
+        <div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5d5d60">Versiehistoriek</div>
+        <div style="font:400 12.5px/1.6 'Barlow',sans-serif;color:#5d5d60;margin-top:7px">rev4 · 14 aug · Kris<br>rev3 · 6 aug · bureau<br>rev2 · 22 jul · architect<br>rev1 · 12 jul · architect</div>
+      </div>
+      <div style="border:1px solid #94bce3;background:#eef6ff;padding:12px;font:400 13px/1.5 'Barlow',sans-serif;color:#1d1f20">Oude versies blijven bewaard, maar zijn op de telefoon weggeklapt onder "vorige versies" — de ploeg opent altijd de laatste.</div>
+    </div>
+  </div>
+</div>
+</div>
+
+</div>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1d2d3d"></rect><rect x="34" y="24" width="32" height="52" fill="none" stroke="#94bce3" stroke-width="2"></rect><rect x="40" y="34" width="20" height="14" fill="#5980a6"></rect><rect x="40" y="54" width="20" height="3" fill="#94bce3"></rect><rect x="40" y="61" width="14" height="3" fill="#94bce3"></rect></svg></template>
+<p class="dv-next">Probeer hierna: "toon de management-kant op tablet" · "maak het rapport nog korter" · "chat met vermeldingen en taken"</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startRol&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;tech&quot;,&quot;werfleider&quot;,&quot;sales&quot;,&quot;mgmt&quot;],&quot;default&quot;:&quot;werfleider&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;startScherm&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;werf&quot;,&quot;rapport&quot;,&quot;nieuw&quot;,&quot;chats&quot;,&quot;chat&quot;,&quot;plannen&quot;,&quot;meer&quot;,&quot;verlof&quot;,&quot;modules&quot;,&quot;intake&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;offlineDemo&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;}}">
+class Component extends DCLogic {
+  state = {
+    rol: this.props.startRol || "werfleider",
+    screen: this.props.startScherm || "home",
+    offline: this.props.offlineDemo !== false,
+    werfId: 0, queued: 0, fotos: 2, draft: "", reactie: "",
+    weer: "Droog", uitgevoerd: "", knelpunt: "",
+    aanwezig: { "Kris": true, "Peter": true, "Yassine": true, "Dries": false, "Onderaanneming EL": true },
+    delen: { mgmt: true, werf: true, klant: false },
+    verlofType: "Verlof", van: "2026-09-07", tot: "2026-09-11", verlofNota: "",
+    mod: "verwarming", opm: {}, kNaam: "", kAdres: "", kTel: "", salesNota: "", laatste: "rapport",
+    mijnVerlof: [
+      { periode: "20 – 24 juli", type: "Verlof", dagen: "5 dagen", status: "goed" },
+      { periode: "18 augustus", type: "Inhaalrust", dagen: "1 dag", status: "wacht" }
+    ],
+    teKeuren: [
+      { wie: "Peter Meirhaeghe", periode: "7 – 11 september", type: "Verlof", dagen: "5 dagen", impact: "Ter Beke: Yassine blijft, onderaanneming EL werkt door.", status: "open" },
+      { wie: "Dries Coppens", periode: "18 augustus", type: "Inhaalrust", dagen: "1 dag", impact: "De Smet: geen tweede man die dag — levering staat gepland.", status: "open" }
+    ],
+    reacties: [
+      { van: "Geert (management)", tijd: "18:05", tekst: "Goed opgevolgd. Ik bel de architect morgenvroeg over die sparingen." },
+      { van: "Peter (werf)", tijd: "18:22", tekst: "Gezien — wij starten morgen aan de kelder tot dat opgelost is." }
+    ],
+    msgs: [
+      { van: "Kris — werfleiding", tekst: "Plan verdiep 2 is aangepast, versie 4. Sparingen liggen nu 15 cm hoger.", tijd: "07:10", mine: false, plan: true, planNaam: "SANITAIR_V2_rev4.pdf" },
+      { van: "Peter — werf", tekst: "Ok. Zo zit de collector er nu in, past dat zo?", tijd: "07:26", mine: false, foto: true, fotoLabel: "collector verdiep 1" },
+      { van: "Jij", tekst: "Ja, laat de isolatie nog even open tot ik langskom.", tijd: "07:31", mine: true }
+    ]
+  };
+  set = (o) => this.setState(o);
+
+  renderVals() {
+    const s = this.state;
+    const rol = s.rol;
+    const werven = [
+      { naam: "Residentie Ter Beke", code: "W-2026-041", fase: "ruwbouw", adres: "Bekestraat 8, Aalst", leider: "Kris Van Damme", laatste: "Rapport 13 aug — leidingwerk verdiep 1 klaar, sparingen verdiep 2 fout", fotoLabel: "38 foto's", planLabel: "6 plannen", knelpunt: true },
+      { naam: "Bakkerij De Smet", code: "W-2026-052", fase: "afwerking", adres: "Markt 12, Denderleeuw", leider: "Dries Coppens", laatste: "Rapport 13 aug — ventilatie ingeregeld, wachten op elektriciteit", fotoLabel: "17 foto's", planLabel: "3 plannen", knelpunt: false },
+      { naam: "Appartementen Kaaizicht", code: "W-2026-060", fase: "opstart", adres: "Désiré De Bodtkaai, Ninove", leider: "Kris Van Damme", laatste: "Nog geen rapport — startvergadering maandag", fotoLabel: "4 foto's", planLabel: "9 plannen", knelpunt: false }
+    ];
+    const cur = werven[s.werfId] || werven[0];
+    const nav = (screen) => () => this.set({ screen });
+    const rolNaam = { tech: "Werf", werfleider: "Werfleiding", sales: "Verkoop", mgmt: "Management" };
+    const MODULES = [
+      { key: "verwarming", naam: "Verwarming", sub: "Ketel, warmtepomp, radiatoren, vloerverwarming", fotoTip: "Foto's van ketel + typeplaatje, schouw/afvoer, stookplaats en zekeringkast.",
+        velden: [
+          { id: "type", label: "Gewenste oplossing", kind: "keuze", opties: ["Condensatieketel gas", "Warmtepomp lucht/water", "Hybride", "Nog te bepalen"] },
+          { id: "huidig", label: "Huidige installatie", kind: "keuze", opties: ["Gas", "Stookolie", "Elektrisch", "Geen"] },
+          { id: "leeftijd", label: "Leeftijd toestel", kind: "num", eenheid: "jaar", stap: 1 },
+          { id: "opp", label: "Te verwarmen oppervlakte", kind: "num", eenheid: "m²", stap: 10 },
+          { id: "afgifte", label: "Afgifte aanwezig", kind: "chips", opties: ["Radiatoren", "Vloerverwarming", "Convectoren", "Nieuw te plaatsen"] },
+          { id: "ww", label: "Warm water", kind: "keuze", opties: ["Via ketel", "Boiler 150L", "Boiler 200L+", "Apart toestel"] },
+          { id: "epc", label: "Isolatie / EPC", kind: "tekst", ph: "EPC-label of bouwjaar + isolatie", hintTekst: "Nodig voor de warmteverliesberekening in de backoffice." },
+          { id: "schouw", label: "Afvoer / schouw", kind: "keuze", opties: ["Bestaande schouw", "Dakdoorvoer nodig", "Muurdoorvoer", "Onbekend"] }
+        ] },
+      { key: "airco", naam: "Airco", sub: "Split, multisplit, cassette", fotoTip: "Foto per ruimte, plaats buitenunit, leidingtracé en condensafvoer.",
+        velden: [
+          { id: "ruimtes", label: "Aantal ruimtes", kind: "num", eenheid: "ruimtes", stap: 1 },
+          { id: "opp", label: "Grootste ruimte", kind: "num", eenheid: "m²", stap: 5 },
+          { id: "binnen", label: "Type binnenunit", kind: "chips", opties: ["Wandmodel", "Cassette", "Vloermodel", "Kanaalunit"] },
+          { id: "buiten", label: "Plaats buitenunit", kind: "keuze", opties: ["Tuin", "Plat dak", "Muurbeugel", "Nog te bekijken"] },
+          { id: "leiding", label: "Leidinglengte (langste)", kind: "num", eenheid: "m", stap: 1 },
+          { id: "voeding", label: "Elektrische voeding", kind: "keuze", opties: ["Vrije zekering", "Nieuwe kring nodig", "Onbekend"] },
+          { id: "condens", label: "Condensafvoer", kind: "keuze", opties: ["Naar afvoer", "Pomp nodig", "Naar buiten"] },
+          { id: "koelverwarm", label: "Ook verwarmen?", kind: "keuze", opties: ["Ja", "Nee"] }
+        ] },
+      { key: "zon", naam: "Zonnepanelen + batterij", sub: "Dak, omvormer, thuisbatterij", fotoTip: "Dak van buiten (elke zijde), zolder/dakstructuur, zekeringkast en digitale meter.",
+        velden: [
+          { id: "dakopp", label: "Beschikbaar dakoppervlak", kind: "num", eenheid: "m²", stap: 5 },
+          { id: "orient", label: "Oriëntatie", kind: "chips", opties: ["Zuid", "Oost", "West", "Noord", "Plat dak"] },
+          { id: "dakbed", label: "Dakbedekking", kind: "keuze", opties: ["Pannen", "Leien", "Roofing", "Golfplaat"] },
+          { id: "helling", label: "Dakhelling", kind: "num", eenheid: "graden", stap: 5 },
+          { id: "verbruik", label: "Jaarverbruik", kind: "num", eenheid: "kWh", stap: 500 },
+          { id: "batterij", label: "Batterij gewenst", kind: "keuze", opties: ["Nee", "5 kWh", "10 kWh", "Advies vragen"] },
+          { id: "meter", label: "Digitale meter", kind: "keuze", opties: ["Ja", "Nee", "Onbekend"] },
+          { id: "ean", label: "EAN-nummer", kind: "tekst", ph: "54144…", hintTekst: "Overnemen van de meterkast — anders kan de aanvraag bij Fluvius niet mee." },
+          { id: "steiger", label: "Steiger of hoogtewerker", kind: "keuze", opties: ["Nodig", "Niet nodig", "Te bekijken"] }
+        ] },
+      { key: "sanitair", naam: "Sanitair", sub: "Badkamer, toestellen, leidingwerk", fotoTip: "Elke wand van de ruimte, bestaande leidingen, teller en afvoerpunten.",
+        velden: [
+          { id: "ruimte", label: "Wat wordt aangepakt", kind: "chips", opties: ["Badkamer", "Tweede badkamer", "Toilet", "Keuken", "Berging"] },
+          { id: "toestellen", label: "Toestellen", kind: "chips", opties: ["Bad", "Inloopdouche", "Douchecabine", "Lavabo", "Dubbele lavabo", "Hangtoilet"] },
+          { id: "leidingen", label: "Leidingwerk", kind: "keuze", opties: ["Volledig vernieuwen", "Gedeeltelijk", "Behouden"] },
+          { id: "tegels", label: "Tegelwerk door", kind: "keuze", opties: ["Wachtelaer", "Klant zelf", "Andere aannemer"] },
+          { id: "ww", label: "Warm water", kind: "keuze", opties: ["Bestaand toestel", "Nieuwe boiler", "Doorstromer"] },
+          { id: "afvoer", label: "Afvoer aanwezig", kind: "keuze", opties: ["Ja, bruikbaar", "Verplaatsen", "Nieuw te maken"] },
+          { id: "timing", label: "Gewenste timing", kind: "tekst", ph: "bv. na bouwvak, klant is flexibel" }
+        ] },
+      { key: "ventilatie", naam: "Ventilatie", sub: "Systeem C of D, kanalen, unit", fotoTip: "Plaats van de unit, valse plafonds of technische schacht, doorvoeren dak of muur.",
+        velden: [
+          { id: "systeem", label: "Systeem", kind: "keuze", opties: ["C+ (vraaggestuurd)", "D met WTW", "Advies vragen"] },
+          { id: "ruimtes", label: "Aantal ruimtes aan te sluiten", kind: "num", eenheid: "ruimtes", stap: 1 },
+          { id: "opp", label: "Bewoonbare oppervlakte", kind: "num", eenheid: "m²", stap: 10 },
+          { id: "unit", label: "Plaats unit", kind: "keuze", opties: ["Zolder", "Technische ruimte", "Berging", "Te bepalen"] },
+          { id: "kanalen", label: "Kanalen", kind: "keuze", opties: ["Valse plafonds", "Zichtbaar", "In vloer", "Mix"] },
+          { id: "bouw", label: "Situatie", kind: "keuze", opties: ["Nieuwbouw", "Renovatie", "Bewoond huis"] },
+          { id: "doorvoer", label: "Doorvoer", kind: "keuze", opties: ["Dak", "Muur", "Bestaand"] }
+        ] }
+    ];
+    const openVerlof = s.teKeuren.filter((a) => a.status === "open").length;
+    const wachtend = s.mijnVerlof.filter((a) => a.status === "wacht").length;
+    const mod = MODULES.find((m) => m.key === s.mod) || MODULES[0];
+    const leeg = [];
+    if (!s.kNaam.trim()) leeg.push("klantnaam");
+    mod.velden.forEach((v) => {
+      const w = s.opm[s.mod + "." + v.id];
+      const isLeeg = v.kind === "chips" ? !(Array.isArray(w) && w.length) : v.kind === "num" ? !w : !w;
+      if (isLeeg) leeg.push(v.label.toLowerCase());
+    });
+
+    return {
+      netLabel: s.offline ? "OFFLINE · WACHTRIJ " + (s.queued + 1) : "4G · GESYNCED",
+      netBtn: s.offline ? "offline" : "online",
+      toggleNet: () => this.set({ offline: !s.offline }),
+      queueLabel: (s.queued + 1) + " item(s) wachten op verzending",
+      offline: s.offline,
+      rollen: ["tech", "werfleider", "sales", "mgmt"].map((r) => ({ naam: rolNaam[r], on: rol === r, off: rol !== r, pick: () => this.set({ rol: r, screen: "home" }) })),
+      isMgmt: rol === "mgmt", isWerfleider: rol === "werfleider",
+      screenKicker: { modules: "Opmeting · domein kiezen", intake: "Opmeting · " + mod.naam, home: rol === "sales" ? "Verkoop · 3 opmetingen" : rolNaam[rol] + " · 3 werven", werf: cur.code, rapport: "Werfrapport · " + cur.naam, nieuw: "Nieuw werfrapport", klaar: s.laatste === "opmeting" ? "Opmeting verstuurd" : "Gedeeld", chats: "Werfchats", chat: cur.naam, plannen: cur.code + " · plannen", meer: "Instellingen", verlof: rol === "mgmt" ? "Verlof · " + openVerlof + " te beoordelen" : "Verlof · 9,5 dagen over" }[s.screen] || "",
+
+      isHome: s.screen === "home", isWerf: s.screen === "werf", isRapport: s.screen === "rapport",
+      isNieuw: s.screen === "nieuw", isKlaar: s.screen === "klaar", isChats: s.screen === "chats",
+      isChat: s.screen === "chat", isPlannen: s.screen === "plannen", isMeer: s.screen === "meer",
+
+      homeTitel: rol === "mgmt" ? "Overzicht" : rol === "sales" ? "Verkoop" : "Vrijdag 14 aug",
+      homeMeta: rol === "mgmt" ? "week 33" : rolNaam[rol],
+      kpis: [{ v: "3", k: "werven actief" }, { v: "2", k: "knelpunten open" }, { v: "7", k: "rapporten deze week" }],
+      werven: werven.map((w, i) => ({ ...w, open: () => this.set({ screen: "werf", werfId: i }) })),
+      cur,
+      goHome: nav("home"), goWerf: nav("werf"), goChat: nav("chat"), goChats: nav("chats"), goPlannen: nav("plannen"),
+      startRapport: () => this.set({ screen: "nieuw" }),
+
+      rapporten: [
+        { datum: "13 aug", auteur: "Kris", kort: "Leidingwerk verdiep 1 klaar · 1 knelpunt", open: nav("rapport") },
+        { datum: "12 aug", auteur: "Kris", kort: "Collectoren geplaatst, keuring aangevraagd", open: nav("rapport") },
+        { datum: "11 aug", auteur: "Dries", kort: "Materiaal geleverd, sleuven getrokken", open: nav("rapport") }
+      ],
+      werffotos: ["kelder", "verdiep 1", "collector", "sparing", "levering", "buitenunit"].map((label) => ({ label })),
+      rapportBlokken: [
+        { kop: "Uitgevoerd", tekst: "Leidingwerk verdiep 1 volledig afgewerkt en afgeperst (3 bar, geen verlies). Collectorkast geplaatst en aangesloten. Isolatie deels aangebracht." },
+        { kop: "Knelpunt", tekst: "Sparingen verdiep 2 liggen 15 cm te laag t.o.v. plan rev3. Ploeg kan daar niet verder — plan nazien met architect. Er is geen vertraging als dit maandag beslist is." },
+        { kop: "Morgen", tekst: "Kelder: leidingen naar technische ruimte. Levering warmtepomp om 9u — 2 man nodig om te lossen." }
+      ],
+      rapportFotos: [{ label: "leiding verdiep 1" }, { label: "afpersing 3 bar" }, { label: "sparing fout" }, { label: "collectorkast" }],
+      reacties: s.reacties,
+      reactie: s.reactie,
+      setReactie: (e) => this.set({ reactie: e.target.value }),
+      sendReactie: () => {
+        if (!s.reactie.trim()) return;
+        this.setState((p) => ({ reacties: [...p.reacties, { van: "Jij (" + rolNaam[p.rol] + ")", tijd: "nu", tekst: p.reactie }], reactie: "" }));
+      },
+
+      weerOpties: ["Droog", "Regen", "Hitte"].map((naam) => ({ naam, on: s.weer === naam, off: s.weer !== naam, pick: () => this.set({ weer: naam }) })),
+      ploeg: Object.keys(s.aanwezig).map((naam) => ({ naam, on: !!s.aanwezig[naam], off: !s.aanwezig[naam], toggle: () => this.setState((p) => ({ aanwezig: { ...p.aanwezig, [naam]: !p.aanwezig[naam] } })) })),
+      uitgevoerd: s.uitgevoerd, setUitgevoerd: (e) => this.set({ uitgevoerd: e.target.value }),
+      knelpunt: s.knelpunt, setKnelpunt: (e) => this.set({ knelpunt: e.target.value }),
+      fotoAantal: s.fotos,
+      nieuweFotos: Array.from({ length: s.fotos }, (_, i) => ({ label: "foto " + (i + 1) })),
+      addFoto: () => this.set({ fotos: s.fotos + 1 }),
+      delen: [
+        { key: "mgmt", naam: "Management", sub: "Geert + bureau — ziet alle werven", on: s.delen.mgmt, off: !s.delen.mgmt },
+        { key: "werf", naam: "Ploeg op de werf", sub: "7 mensen, ook onderaanneming EL", on: s.delen.werf, off: !s.delen.werf },
+        { key: "klant", naam: "Klant / architect", sub: "Alleen uitgevoerd werk en foto's, geen interne nota's", on: s.delen.klant, off: !s.delen.klant }
+      ].map((d) => ({ ...d, toggle: () => this.setState((p) => ({ delen: { ...p.delen, [d.key]: !p.delen[d.key] } })) })),
+      publiceerLabel: s.offline ? "Opslaan in wachtrij" : "Rapport delen",
+      publiceer: () => this.set({ screen: "klaar", laatste: "rapport", queued: s.offline ? s.queued + 1 : s.queued }),
+      routingKop: s.laatste === "opmeting" ? "Gaat naar" : "Zichtbaar voor",
+      klaarBtn: s.laatste === "opmeting" ? "Naar mijn opmetingen" : "Naar de werf",
+      klaarTerug: () => this.set({ screen: s.laatste === "opmeting" ? "home" : "werf" }),
+      klaarTitel: s.laatste === "opmeting"
+        ? (s.offline ? "Opgeslagen op toestel" : "Opmeting doorgestuurd")
+        : (s.offline ? "Opgeslagen op toestel" : "Rapport gedeeld"),
+      klaarTekst: s.laatste === "opmeting"
+        ? (s.offline ? "Zodra je verbinding hebt gaat de opmeting met foto's naar de backoffice." : "De backoffice heeft alle gegevens van " + mod.naam.toLowerCase() + " en " + s.fotos + " foto's. Je ziet de status bij je opmetingen.")
+        : (s.offline ? "Zodra je verbinding hebt gaat het rapport automatisch weg, met de foto's erbij." : "Management en de ploeg zien het rapport nu, met " + s.fotos + " foto's. Reacties komen in dezelfde lijn terecht."),
+      routing: s.laatste === "opmeting" ? [
+        { k: "Backoffice — offerte " + mod.naam.toLowerCase(), v: s.offline ? "wachtrij" : "aangemaakt" },
+        { k: "Klantdossier " + (s.kNaam.trim() || "(naam ontbreekt)"), v: s.offline ? "wachtrij" : "bijgewerkt" },
+        { k: "Jij — opvolging", v: "herinnering na 5 dagen" }
+      ] : [
+        { k: "Management (Geert + bureau)", v: s.delen.mgmt ? (s.offline ? "wachtrij" : "gedeeld") : "niet gedeeld" },
+        { k: "Ploeg " + cur.naam, v: s.delen.werf ? (s.offline ? "wachtrij" : "gedeeld") : "niet gedeeld" },
+        { k: "Klant / architect", v: s.delen.klant ? "beperkte versie" : "niet gedeeld" }
+      ],
+
+      threads: [
+        { titel: "Residentie Ter Beke", tijd: "07:31", laatste: "Kris: plan verdiep 2 is aangepast, versie 4.", leden: "werf + bureau", ongelezen: true, open: nav("chat") },
+        { titel: "Bakkerij De Smet", tijd: "gisteren", laatste: "Dries: elektricien komt vrijdag, ventilatie kan dan af.", leden: "werf + bureau", ongelezen: false, open: nav("chat") },
+        { titel: "Werfleiders", tijd: "06:50", laatste: "Geert: rapporten graag voor 18u, dan kan ik de klant bellen.", leden: "3 leden", ongelezen: true, open: nav("chat") },
+        { titel: "Iedereen — Wachtelaer", tijd: "wo", laatste: "Els: veiligheidsopleiding op 3 september.", leden: "20 leden", ongelezen: false, open: nav("chat") }
+      ],
+      msgs: s.msgs.map((m) => ({ ...m, theirs: !m.mine })),
+      draft: s.draft,
+      setDraft: (e) => this.set({ draft: e.target.value }),
+      sendMsg: () => {
+        if (!s.draft.trim()) return;
+        this.setState((p) => ({ msgs: [...p.msgs, { van: "Jij", tekst: p.draft, tijd: "nu", mine: true }], draft: "" }));
+      },
+
+      plannen: [
+        { naam: "SANITAIR_V2_rev4.pdf", meta: "versie 4 · 14 aug · Kris", nieuw: true },
+        { naam: "CV_grondplan_rev2.pdf", meta: "versie 2 · 9 aug · bureau", nieuw: false },
+        { naam: "Ventilatie_kanaalplan.pdf", meta: "versie 1 · 2 aug · bureau", nieuw: false },
+        { naam: "Veiligheidsplan werf.pdf", meta: "versie 3 · 28 jul · Geert", nieuw: false }
+      ],
+      desktopPlannen: [
+        { naam: "SANITAIR_V2_rev4.pdf", versie: "rev4", datum: "14 aug", zicht: "ploeg + werfleiding", nieuw: true },
+        { naam: "CV_grondplan_rev2.pdf", versie: "rev2", datum: "9 aug", zicht: "ploeg + werfleiding", nieuw: false },
+        { naam: "Ventilatie_kanaalplan.pdf", versie: "rev1", datum: "2 aug", zicht: "ploeg + werfleiding", nieuw: false },
+        { naam: "Veiligheidsplan werf.pdf", versie: "rev3", datum: "28 jul", zicht: "iedereen", nieuw: false },
+        { naam: "Meetstaat sanitair.xlsx", versie: "rev2", datum: "26 jul", zicht: "alleen bureau", nieuw: false }
+      ],
+      meerItems: [
+        { titel: rol === "mgmt" ? "Verlofaanvragen" : "Verlof aanvragen", sub: rol === "mgmt" ? openVerlof + " te beoordelen · kalender per werf" : "9,5 dagen over · " + wachtend + " in behandeling", go: nav("verlof") },
+        { titel: "Mijn werven", sub: "3 werven · meldingen per werf instellen", go: nav("meer") },
+        { titel: "Documenten", sub: "Veiligheidsfiches, attesten, handleidingen", go: nav("meer") },
+        { titel: "Ploeg & rechten", sub: "Wie ziet welke werf en welke rapporten", go: nav("meer") },
+        { titel: "Synchronisatie", sub: "Foto's alleen via wifi uploaden", go: nav("meer") }
+      ],
+
+      isSales: rol === "sales",
+      isModules: s.screen === "modules", isIntake: s.screen === "intake",
+      goModules: nav("modules"),
+      modules: MODULES.map((m) => ({ naam: m.naam, sub: m.sub, pick: () => this.set({ screen: "intake", mod: m.key }) })),
+      modNaam: mod.naam,
+      fotoTip: mod.fotoTip,
+      velden: mod.velden.map((v) => {
+        const w = s.opm[s.mod + "." + v.id];
+        const put = (val) => this.setState((p) => ({ opm: { ...p.opm, [p.mod + "." + v.id]: val } }));
+        return {
+          label: v.label,
+          isKeuze: v.kind === "keuze", isNum: v.kind === "num", isTekst: v.kind === "tekst", isChips: v.kind === "chips",
+          hint: !!v.hintTekst, hintTekst: v.hintTekst || "",
+          eenheid: v.eenheid || "", ph: v.ph || "",
+          waarde: v.kind === "num" ? (w || 0) : (w || ""),
+          set: (e) => put(e.target.value),
+          plus: () => put((w || 0) + (v.stap || 1)),
+          min: () => put(Math.max(0, (w || 0) - (v.stap || 1))),
+          opties: (v.opties || []).map((naam) => {
+            const gekozen = v.kind === "chips" ? Array.isArray(w) && w.includes(naam) : w === naam;
+            return {
+              naam, on: gekozen, off: !gekozen,
+              pick: () => (v.kind === "chips"
+                ? put(Array.isArray(w) ? (w.includes(naam) ? w.filter((x) => x !== naam) : [...w, naam]) : [naam])
+                : put(naam))
+            };
+          })
+        };
+      }),
+      kNaam: s.kNaam, kAdres: s.kAdres, kTel: s.kTel,
+      setKNaam: (e) => this.set({ kNaam: e.target.value }),
+      setKAdres: (e) => this.set({ kAdres: e.target.value }),
+      setKTel: (e) => this.set({ kTel: e.target.value }),
+      salesNota: s.salesNota,
+      setSalesNota: (e) => this.set({ salesNota: e.target.value }),
+      ontbreekt: leeg.length ? leeg.join(" · ") : "Niets — dit dossier is volledig voor de backoffice.",
+      opmetingBtn: s.offline ? "Opslaan in wachtrij" : "Naar backoffice sturen",
+      verstuurOpmeting: () => this.set({ screen: "klaar", laatste: "opmeting", queued: s.offline ? s.queued + 1 : s.queued }),
+      opmetingen: [
+        { klant: "Fam. Devos", datum: "13 aug", module: "Zonnepanelen + batterij", detail: "34 m² zuid · 10 kWh batterij", fotos: "9 foto's", status: "offerte verstuurd" },
+        { klant: "Bakkerij De Smet", datum: "12 aug", module: "Airco", detail: "3 ruimtes · multisplit", fotos: "6 foto's", status: "bij backoffice" },
+        { klant: "Fam. Verhoeven", datum: "11 aug", module: "Verwarming", detail: "Stookolie → warmtepomp · 180 m²", fotos: "12 foto's", status: "wacht op EPC" }
+      ],
+
+      isVerlof: s.screen === "verlof",
+      nietMgmt: rol !== "mgmt",
+      goMeer: nav("meer"),
+      goedkeurder: rol === "werfleider" ? "Geert (management)" : "je werfleider",
+      saldo: [{ v: "9,5", k: "dagen over" }, { v: String(wachtend), k: "in behandeling" }, { v: "3", k: "inhaalrust" }],
+      verlofTypes: ["Verlof", "Inhaalrust", "Ziekte"].map((naam) => ({ naam, on: s.verlofType === naam, off: s.verlofType !== naam, pick: () => this.set({ verlofType: naam }) })),
+      van: s.van, tot: s.tot,
+      setVan: (e) => this.set({ van: e.target.value }),
+      setTot: (e) => this.set({ tot: e.target.value }),
+      verlofNota: s.verlofNota,
+      setVerlofNota: (e) => this.set({ verlofNota: e.target.value }),
+      conflict: "Ter Beke: Peter vroeg dezelfde week aan (nog niet beslist). Yassine is aanwezig.",
+      verlofBtn: s.offline ? "Opslaan in wachtrij" : "Aanvraag versturen",
+      vraagVerlof: () => this.setState((p) => ({
+        mijnVerlof: [{ periode: "7 – 11 september", type: p.verlofType, dagen: "5 dagen", status: "wacht" }, ...p.mijnVerlof],
+        verlofNota: "", queued: p.offline ? p.queued + 1 : p.queued
+      })),
+      mijnVerlof: s.mijnVerlof.map((a) => ({ ...a, goed: a.status === "goed", wacht: a.status === "wacht", nee: a.status === "nee" })),
+      teKeuren: s.teKeuren.filter((a) => a.status === "open").map((a, i) => ({
+        ...a,
+        keur: () => this.setState((p) => ({ teKeuren: p.teKeuren.map((x) => (x.wie === a.wie ? { ...x, status: "goed" } : x)) })),
+        weiger: () => this.setState((p) => ({ teKeuren: p.teKeuren.map((x) => (x.wie === a.wie ? { ...x, status: "nee" } : x)) }))
+      })),
+      geenTeKeuren: s.teKeuren.filter((a) => a.status === "open").length === 0,
+
+      tabs: [
+        { naam: rol === "sales" ? "Verkoop" : "Werven", key: "home", screens: ["home", "werf", "rapport", "nieuw", "klaar", "modules", "intake"] },
+        { naam: "Chat", key: "chats", screens: ["chats", "chat"] },
+        { naam: "Plannen", key: "plannen", screens: ["plannen"] },
+        { naam: "Meer", key: "meer", screens: ["meer", "verlof"] }
+      ].map((t) => ({ naam: t.naam, on: t.screens.includes(s.screen), off: !t.screens.includes(s.screen), go: nav(t.key) })),
+
+      notes: [
+        { kop: "Eén rapport, twee publieken", tekst: "De werfleiding schrijft één keer; management leest het voor beslissingen, de ploeg leest hetzelfde om te weten wat morgen te doen. Geen tweede versie 'voor de baas'." },
+        { kop: "Rapport = tekst + foto's, niets meer", tekst: "Weer, aanwezigen, uitgevoerd, knelpunt, morgen, foto's. Vinkjes en dicteren i.p.v. typen. Vijf minuten op het einde van de dag, ook zonder signaal." },
+        { kop: "Delen is een keuze per rapport", tekst: "Management, ploeg, en eventueel klant/architect met een beperkte versie zonder interne nota's. Zichtbaar bovenaan het rapport zodat niemand zich vergist." },
+        { kop: "Chat hangt aan de werf", tekst: "Elke werf één kanaal waar foto's en plannen in dezelfde lijn staan; daarnaast 'Werfleiders' en 'Iedereen'. Zoeken op werf i.p.v. scrollen in privéberichten." },
+        { kop: "Plannen met versienummer", tekst: "Altijd de laatste versie bovenaan, met 'nieuw'-label. Wie de oude open had, krijgt een melding — dat is de veelvoorkomende fout op de werf." },
+        { kop: "Verkoop meet op, backoffice rekent", tekst: "Per domein — verwarming, airco, zonnepanelen + batterij, sanitair, ventilatie — een eigen korte vragenlijst met net die gegevens die de offerte nodig heeft (EAN, dakoppervlak, leidinglengte, EPC…). De verkoper belooft geen prijs; de backoffice maakt de offerte." },
+        { kop: "'Ontbreekt nog' voor je vertrekt", tekst: "Het formulier zegt ter plaatse welk veld nog leeg is. Dat is precies het moment waarop je het nog kan gaan meten — niet de dag erna aan de telefoon." },
+        { kop: "Verlof in dezelfde app", tekst: "Aanvragen met soort, periode en nota; de app toont er meteen bij wie van jouw werf die dagen al weg is. Management keurt goed of weigert in twee tikken — de aanvrager ziet de status in 'Mijn aanvragen'." },
+        { kop: "Werkbonnen blijven buiten", tekst: "Uren, materialen en facturatie blijven in jullie bestaande systeem. Deze app verwijst er enkel naar; ze concurreert er niet mee." }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
