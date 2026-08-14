@@ -58,6 +58,21 @@ export interface WerfrapportReactie {
   created_at: string;
 }
 
+export interface WerfChatBericht {
+  id: string;
+  werf_id: string;
+  auteur_id: string;
+  tekst: string;
+  foto_storage_path: string | null;
+  created_at: string;
+}
+
+export interface WerfChatRead {
+  werf_id: string;
+  profile_id: string;
+  last_read_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -79,6 +94,12 @@ export interface Database {
         Insert: Partial<WerfrapportReactie> & Pick<WerfrapportReactie, 'rapport_id' | 'auteur_id' | 'tekst'>;
         Update: Partial<WerfrapportReactie>;
       };
+      werf_chat_berichten: {
+        Row: WerfChatBericht;
+        Insert: Partial<WerfChatBericht> & Pick<WerfChatBericht, 'werf_id' | 'auteur_id'>;
+        Update: Partial<WerfChatBericht>;
+      };
+      werf_chat_reads: { Row: WerfChatRead; Insert: WerfChatRead; Update: Partial<WerfChatRead> };
     };
   };
 }

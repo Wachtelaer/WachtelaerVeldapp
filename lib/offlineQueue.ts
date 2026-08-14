@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 
 import { createRapport, addReactie, type NieuwRapportInput } from '@/lib/api/rapporten';
+import { sendMessage, type SendMessageInput } from '@/lib/api/chat';
 
 const STORAGE_KEY = 'wachtelaer.offlineQueue.v1';
 
@@ -13,7 +14,8 @@ type QueuedAction =
       kind: 'submit_reactie';
       createdAt: number;
       payload: { rapportId: string; auteurId: string; tekst: string };
-    };
+    }
+  | { id: string; kind: 'submit_chat_bericht'; createdAt: number; payload: SendMessageInput };
 
 let queue: QueuedAction[] = [];
 let hydrated = false;
@@ -52,6 +54,12 @@ export async function enqueueReactie(payload: { rapportId: string; auteurId: str
   await persist();
 }
 
+export async function enqueueChatBericht(payload: SendMessageInput) {
+  await hydrate();
+  queue = [...queue, { id: makeId(), kind: 'submit_chat_bericht', createdAt: Date.now(), payload }];
+  await persist();
+}
+
 export function getQueueLength() {
   return queue.length;
 }
@@ -64,8 +72,10 @@ export async function flushQueue() {
     try {
       if (action.kind === 'submit_rapport') {
         await createRapport(action.payload);
-      } else {
+      } else if (action.kind === 'submit_reactie') {
         await addReactie(action.payload.rapportId, action.payload.auteurId, action.payload.tekst);
+      } else {
+        await sendMessage(action.payload);
       }
     } catch {
       remaining.push(action);

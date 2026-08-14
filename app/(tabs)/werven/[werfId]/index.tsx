@@ -92,7 +92,7 @@ export default function WerfDetailScreen() {
             <View style={styles.row}>
               <TouchableOpacity
                 style={styles.secondaryAction}
-                onPress={() => router.push('/chat')}
+                onPress={() => router.push(`/chat/${werf.id}`)}
                 accessibilityRole="button">
                 <Ionicons name="chatbubbles-outline" size={16} color={colors.accent} />
                 <Text style={styles.secondaryActionLabel}>Werfchat</Text>
