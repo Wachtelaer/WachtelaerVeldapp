@@ -84,7 +84,9 @@ export async function sendMessage(input: SendMessageInput) {
     const { blob, ext, contentType } = await resolveImageBlob(input.fotoUri);
     const filename = `${Crypto.randomUUID()}.${ext}`;
     const path = `${input.werfId}/${filename}`;
-    const { error: uploadError } = await supabase.storage.from(CHAT_FOTOS_BUCKET).upload(path, blob, { contentType });
+    const { error: uploadError } = await supabase.storage
+      .from(CHAT_FOTOS_BUCKET)
+      .upload(path, blob, { contentType });
     if (uploadError) throw uploadError;
     fotoStoragePath = path;
   }

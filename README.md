@@ -9,9 +9,15 @@ and Supabase. This implements phases of the design in
   visibility, and offline queueing.
 - **Phase 2a — werfchat**: one group chat per site (text + photos), with an
   unread indicator on the thread list, also queued offline.
+- **Phase 2b — verkoopmodule**: a `sales` user picks a domain (verwarming,
+  airco, zonnepanelen + batterij, sanitair, ventilatie), fills a
+  domain-specific questionnaire with a live "ontbreekt nog" completeness
+  check, attaches photos, and sends it to the backoffice — offline-queued
+  like everything else. No prices are captured; the verkoper measures, the
+  backoffice quotes.
 
-Plannen/documenten, verlofaanvragen, and the sales/opmeting module are in the
-prototype but not yet built here; they're the natural next phases.
+Plannen/documenten and verlofaanvragen are in the prototype but not yet
+built here; they're the natural next phase.
 
 ## Stack
 
@@ -27,7 +33,7 @@ prototype but not yet built here; they're the natural next phases.
 2. Run the migrations in `supabase/migrations/` **in order** against it (via
    the SQL editor, or `supabase db push` if you use the Supabase CLI
    locally): `0001_werfrapporten.sql`, `0002_harden_helper_functions.sql`,
-   `0003_werfchat.sql`.
+   `0003_werfchat.sql`, `0004_verkoop_opmetingen.sql`.
 3. Optionally run `supabase/seed.sql` for the three demo werven from the
    prototype.
 4. Create employee accounts under Authentication → Users (or have them sign
@@ -59,7 +65,8 @@ npm run ios      # or: npm run android / npm run web
 app/                  expo-router screens (file-based routing)
   sign-in.tsx
   (tabs)/
-    werven/           werven list, werf detail, nieuw rapport, rapport view
+    werven/           werven list, werf detail, nieuw rapport, rapport view,
+                      and (for sales) opmeting/modules|[mod]|klaar
     chat/             thread list (one per werf) + message thread
     plannen.tsx       stub — phase 2
     meer.tsx          profile + sign out
@@ -68,6 +75,7 @@ lib/
   supabase.ts         client
   offlineQueue.ts      outbox + connectivity
   theme.ts            design tokens ported from project/_ds/.../styles.css
+  salesModules.ts     the 5 domain questionnaires for the verkoopmodule
 context/AuthProvider.tsx
 supabase/migrations/  SQL schema + RLS policies
 project/, chats/      the original Claude Design handoff (reference only)
@@ -78,8 +86,9 @@ project/, chats/      the original Claude Design handoff (reference only)
 `profiles` (role: tech/werfleider/sales/mgmt) · `werven` (sites) ·
 `werf_members` (who's assigned where, and who leads) · `werfrapporten` ·
 `werfrapport_fotos` · `werfrapport_reacties` · `werf_chat_berichten` ·
-`werf_chat_reads`. RLS enforces the same sharing rules as the prototype: a
-report is visible to its author, to management (if shared with
-management), and to the site's crew (if shared with the site); a werfchat
-thread is visible to management and to that site's crew — see the
-policies in the migrations for the exact rules.
+`werf_chat_reads` · `opmetingen` · `opmeting_fotos`. RLS enforces the same
+sharing rules as the prototype: a report is visible to its author, to
+management (if shared with management), and to the site's crew (if shared
+with the site); a werfchat thread is visible to management and to that
+site's crew; an opmeting is visible to the verkoper who created it and to
+management — see the policies in the migrations for the exact rules.

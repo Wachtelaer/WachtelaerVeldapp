@@ -87,6 +87,43 @@ export function Stepper({
   );
 }
 
+/** Wrapped pill buttons — single-select (like a radio group) or multi-select (like checkboxes). */
+export function ChipGroup({
+  opties,
+  value,
+  onChange,
+  multi = false,
+}: {
+  opties: string[];
+  value: string | string[] | undefined;
+  onChange: (v: string | string[]) => void;
+  multi?: boolean;
+}) {
+  return (
+    <View style={styles.chipGroup}>
+      {opties.map((opt) => {
+        const active = multi ? Array.isArray(value) && value.includes(opt) : value === opt;
+        return (
+          <TouchableOpacity
+            key={opt}
+            onPress={() => {
+              if (multi) {
+                const arr = Array.isArray(value) ? value : [];
+                onChange(arr.includes(opt) ? arr.filter((x) => x !== opt) : [...arr, opt]);
+              } else {
+                onChange(opt);
+              }
+            }}
+            style={[styles.chip, active && styles.chipActive]}
+            accessibilityRole="button">
+            <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{opt}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
 export function ToggleRow({
   checked,
   onToggle,
@@ -149,6 +186,11 @@ const styles = StyleSheet.create({
   stepperBtnRight: { borderRightWidth: 0, borderLeftWidth: 1, borderLeftColor: colors.dividerStrong },
   stepperValue: { minWidth: 44, textAlign: 'center', fontFamily: fonts.monoMedium, fontSize: 16, color: colors.ink },
   eenheid: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkMuted },
+  chipGroup: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center', borderWidth: 1, borderColor: colors.dividerStrong },
+  chipActive: { backgroundColor: colors.accent, borderColor: colors.accentDark },
+  chipLabel: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.ink },
+  chipLabelActive: { color: colors.white },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 },
   checkbox: { width: 22, height: 22, borderWidth: 1, borderColor: colors.dividerStrong, alignItems: 'center', justifyContent: 'center' },
   checkboxOn: { backgroundColor: colors.accent, borderColor: colors.accentDark },

@@ -7,24 +7,33 @@ import { KpiTile, SectionLabel, Tag } from '@/components/ui/Basics';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthProvider';
 import { listWervenWithSummary, type WerfListItem } from '@/lib/api/werven';
+import { listMyOpmetingen, type OpmetingListItem } from '@/lib/api/opmetingen';
+import { getModule, summarizeAntwoorden } from '@/lib/salesModules';
 import { colors, fonts, roleLabels } from '@/lib/theme';
 
 export default function WervenHomeScreen() {
   const { profile } = useAuth();
   const [werven, setWerven] = useState<WerfListItem[] | null>(null);
+  const [opmetingen, setOpmetingen] = useState<OpmetingListItem[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isSales = profile?.role === 'sales';
 
   const load = useCallback(async () => {
     if (!profile) return;
     try {
       setError(null);
-      const data = await listWervenWithSummary(profile.id);
+      const [data, opm] = await Promise.all([
+        listWervenWithSummary(profile.id),
+        isSales ? listMyOpmetingen(profile.id) : Promise.resolve(null),
+      ]);
       setWerven(data);
+      setOpmetingen(opm);
     } catch (e: any) {
-      setError(e.message ?? 'Kon werven niet laden');
+      setError(e.message ?? 'Kon gegevens niet laden');
     }
-  }, [profile]);
+  }, [profile, isSales]);
 
   useEffect(() => {
     load();
@@ -50,13 +59,19 @@ export default function WervenHomeScreen() {
   return (
     <View style={styles.root}>
       <AppHeader
-        kicker={profile ? `${roleLabels[profile.role]} · ${(werven ?? []).length} werven` : ''}
+        kicker={
+          profile
+            ? isSales
+              ? `Verkoop · ${(opmetingen ?? []).length} opmetingen`
+              : `${roleLabels[profile.role]} · ${(werven ?? []).length} werven`
+            : ''
+        }
       />
       <ScrollView
         contentContainerStyle={styles.body}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         <View style={styles.titleRow}>
-          <Text style={styles.title}>{isMgmt ? 'Overzicht' : 'Werven'}</Text>
+          <Text style={styles.title}>{isMgmt ? 'Overzicht' : isSales ? 'Verkoop' : 'Werven'}</Text>
         </View>
 
         {werven === null && !error ? <ActivityIndicator style={{ marginTop: 24 }} color={colors.accent} /> : null}
@@ -75,6 +90,38 @@ export default function WervenHomeScreen() {
             label="Werfrapport van vandaag"
             onPress={() => router.push(`/werven/${eigenWerven[0].id}/nieuw`)}
           />
+        ) : null}
+
+        {isSales ? (
+          <View style={{ gap: 12 }}>
+            <Button label="Nieuwe opmeting bij klant" onPress={() => router.push('/werven/opmeting/modules')} />
+            <View>
+              <SectionLabel>Opmetingen</SectionLabel>
+              {opmetingen && opmetingen.length === 0 ? (
+                <Text style={styles.empty}>Nog geen opmetingen.</Text>
+              ) : null}
+              {opmetingen?.map((o) => {
+                const mod = getModule(o.module);
+                return (
+                  <View key={o.id} style={styles.card}>
+                    <View style={styles.cardTop}>
+                      <Text style={styles.cardName} numberOfLines={1}>
+                        {o.klant_naam || '(naam ontbreekt)'}
+                      </Text>
+                      <Text style={styles.cardFase}>{formatDatum(o.created_at)}</Text>
+                    </View>
+                    <Text style={styles.cardMeta} numberOfLines={2}>
+                      {`${mod.naam} · ${summarizeAntwoorden(mod, o.antwoorden)}`}
+                    </Text>
+                    <View style={styles.tagRow}>
+                      <Tag label={`${o.fotoCount} foto's`} />
+                      <Tag label={o.status} tone="accent" />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
         ) : null}
 
         {werven && werven.length > 0 ? (

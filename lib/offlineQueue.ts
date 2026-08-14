@@ -4,6 +4,7 @@ import NetInfo from '@react-native-community/netinfo';
 
 import { createRapport, addReactie, type NieuwRapportInput } from '@/lib/api/rapporten';
 import { sendMessage, type SendMessageInput } from '@/lib/api/chat';
+import { createOpmeting, type NieuweOpmetingInput } from '@/lib/api/opmetingen';
 
 const STORAGE_KEY = 'wachtelaer.offlineQueue.v1';
 
@@ -15,7 +16,8 @@ type QueuedAction =
       createdAt: number;
       payload: { rapportId: string; auteurId: string; tekst: string };
     }
-  | { id: string; kind: 'submit_chat_bericht'; createdAt: number; payload: SendMessageInput };
+  | { id: string; kind: 'submit_chat_bericht'; createdAt: number; payload: SendMessageInput }
+  | { id: string; kind: 'submit_opmeting'; createdAt: number; payload: NieuweOpmetingInput };
 
 let queue: QueuedAction[] = [];
 let hydrated = false;
@@ -60,6 +62,12 @@ export async function enqueueChatBericht(payload: SendMessageInput) {
   await persist();
 }
 
+export async function enqueueOpmeting(payload: NieuweOpmetingInput) {
+  await hydrate();
+  queue = [...queue, { id: makeId(), kind: 'submit_opmeting', createdAt: Date.now(), payload }];
+  await persist();
+}
+
 export function getQueueLength() {
   return queue.length;
 }
@@ -74,8 +82,10 @@ export async function flushQueue() {
         await createRapport(action.payload);
       } else if (action.kind === 'submit_reactie') {
         await addReactie(action.payload.rapportId, action.payload.auteurId, action.payload.tekst);
-      } else {
+      } else if (action.kind === 'submit_chat_bericht') {
         await sendMessage(action.payload);
+      } else {
+        await createOpmeting(action.payload);
       }
     } catch {
       remaining.push(action);

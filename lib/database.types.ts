@@ -73,6 +73,27 @@ export interface WerfChatRead {
   last_read_at: string;
 }
 
+export interface Opmeting {
+  id: string;
+  verkoper_id: string;
+  module: string;
+  klant_naam: string;
+  klant_adres: string;
+  klant_tel: string;
+  antwoorden: Record<string, unknown>;
+  nota: string;
+  status: string;
+  created_at: string;
+}
+
+export interface OpmetingFoto {
+  id: string;
+  opmeting_id: string;
+  storage_path: string;
+  label: string;
+  created_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -100,6 +121,16 @@ export interface Database {
         Update: Partial<WerfChatBericht>;
       };
       werf_chat_reads: { Row: WerfChatRead; Insert: WerfChatRead; Update: Partial<WerfChatRead> };
+      opmetingen: {
+        Row: Opmeting;
+        Insert: Partial<Opmeting> & Pick<Opmeting, 'verkoper_id' | 'module'>;
+        Update: Partial<Opmeting>;
+      };
+      opmeting_fotos: {
+        Row: OpmetingFoto;
+        Insert: Partial<OpmetingFoto> & Pick<OpmetingFoto, 'opmeting_id' | 'storage_path'>;
+        Update: Partial<OpmetingFoto>;
+      };
     };
   };
 }
