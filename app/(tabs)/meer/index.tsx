@@ -18,9 +18,13 @@ export default function MeerTab() {
   useFocusEffect(
     useCallback(() => {
       if (!profile) return;
-      (isMgmt ? countTeKeuren() : countInBehandeling(profile.id)).then((n) => {
-        setVerlofSub(isMgmt ? `${n} te beoordelen` : `${profile.verlof_dagen} dagen over · ${n} in behandeling`);
-      });
+      (isMgmt ? countTeKeuren() : countInBehandeling(profile.id))
+        .then((n) => {
+          setVerlofSub(isMgmt ? `${n} te beoordelen` : `${profile.verlof_dagen} dagen over · ${n} in behandeling`);
+        })
+        .catch(() => {
+          setVerlofSub(isMgmt ? '0 te beoordelen' : `${profile.verlof_dagen} dagen over · 0 in behandeling`);
+        });
     }, [profile, isMgmt])
   );
 
