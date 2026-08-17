@@ -8,6 +8,8 @@ export interface Profile {
   id: string;
   full_name: string;
   role: Role;
+  verlof_dagen: number;
+  inhaalrust_dagen: number;
   created_at: string;
 }
 
@@ -94,6 +96,22 @@ export interface OpmetingFoto {
   created_at: string;
 }
 
+export type VerlofType = 'Verlof' | 'Inhaalrust' | 'Ziekte';
+export type VerlofStatus = 'wacht' | 'goed' | 'nee';
+
+export interface Verlofaanvraag {
+  id: string;
+  aanvrager_id: string;
+  type: VerlofType;
+  van: string;
+  tot: string;
+  nota: string;
+  status: VerlofStatus;
+  behandeld_door: string | null;
+  behandeld_op: string | null;
+  created_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -130,6 +148,11 @@ export interface Database {
         Row: OpmetingFoto;
         Insert: Partial<OpmetingFoto> & Pick<OpmetingFoto, 'opmeting_id' | 'storage_path'>;
         Update: Partial<OpmetingFoto>;
+      };
+      verlofaanvragen: {
+        Row: Verlofaanvraag;
+        Insert: Partial<Verlofaanvraag> & Pick<Verlofaanvraag, 'aanvrager_id' | 'type' | 'van' | 'tot'>;
+        Update: Partial<Verlofaanvraag>;
       };
     };
   };

@@ -5,6 +5,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { createRapport, addReactie, type NieuwRapportInput } from '@/lib/api/rapporten';
 import { sendMessage, type SendMessageInput } from '@/lib/api/chat';
 import { createOpmeting, type NieuweOpmetingInput } from '@/lib/api/opmetingen';
+import { createAanvraag, type NieuweVerlofaanvraagInput } from '@/lib/api/verlof';
 
 const STORAGE_KEY = 'wachtelaer.offlineQueue.v1';
 
@@ -17,7 +18,8 @@ type QueuedAction =
       payload: { rapportId: string; auteurId: string; tekst: string };
     }
   | { id: string; kind: 'submit_chat_bericht'; createdAt: number; payload: SendMessageInput }
-  | { id: string; kind: 'submit_opmeting'; createdAt: number; payload: NieuweOpmetingInput };
+  | { id: string; kind: 'submit_opmeting'; createdAt: number; payload: NieuweOpmetingInput }
+  | { id: string; kind: 'submit_verlofaanvraag'; createdAt: number; payload: NieuweVerlofaanvraagInput };
 
 let queue: QueuedAction[] = [];
 let hydrated = false;
@@ -68,6 +70,12 @@ export async function enqueueOpmeting(payload: NieuweOpmetingInput) {
   await persist();
 }
 
+export async function enqueueVerlofaanvraag(payload: NieuweVerlofaanvraagInput) {
+  await hydrate();
+  queue = [...queue, { id: makeId(), kind: 'submit_verlofaanvraag', createdAt: Date.now(), payload }];
+  await persist();
+}
+
 export function getQueueLength() {
   return queue.length;
 }
@@ -84,8 +92,10 @@ export async function flushQueue() {
         await addReactie(action.payload.rapportId, action.payload.auteurId, action.payload.tekst);
       } else if (action.kind === 'submit_chat_bericht') {
         await sendMessage(action.payload);
-      } else {
+      } else if (action.kind === 'submit_opmeting') {
         await createOpmeting(action.payload);
+      } else {
+        await createAanvraag(action.payload);
       }
     } catch {
       remaining.push(action);

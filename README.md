@@ -14,10 +14,15 @@ and Supabase. This implements phases of the design in
   domain-specific questionnaire with a live "ontbreekt nog" completeness
   check, attaches photos, and sends it to the backoffice — offline-queued
   like everything else. No prices are captured; the verkoper measures, the
-  backoffice quotes.
+  backoffice quotes. A separate daily script (`scripts/backup-opmetingen/`)
+  backs up every opmeting to a local PDF + photo zip.
+- **Phase 2c — verlofaanvragen**: request leave (type/period/note) with a
+  live check of which same-site colleagues are already off in that period;
+  management approves or rejects, seeing a computed crew-availability note
+  per request. Also offline-queued.
 
-Plannen/documenten and verlofaanvragen are in the prototype but not yet
-built here; they're the natural next phase.
+Plannen/documenten is in the prototype but not yet built here; it's the
+natural next phase.
 
 ## Stack
 
@@ -33,7 +38,8 @@ built here; they're the natural next phase.
 2. Run the migrations in `supabase/migrations/` **in order** against it (via
    the SQL editor, or `supabase db push` if you use the Supabase CLI
    locally): `0001_werfrapporten.sql`, `0002_harden_helper_functions.sql`,
-   `0003_werfchat.sql`, `0004_verkoop_opmetingen.sql`.
+   `0003_werfchat.sql`, `0004_verkoop_opmetingen.sql`,
+   `0005_verlofaanvragen.sql`.
 3. Optionally run `supabase/seed.sql` for the three demo werven from the
    prototype.
 4. Create employee accounts under Authentication → Users (or have them sign
@@ -69,7 +75,7 @@ app/                  expo-router screens (file-based routing)
                       and (for sales) opmeting/modules|[mod]|klaar
     chat/             thread list (one per werf) + message thread
     plannen.tsx       stub — phase 2
-    meer.tsx          profile + sign out
+    meer/             profile + sign out, and verlof (leave requests)
 lib/
   api/                Supabase queries, one module per feature
   supabase.ts         client
@@ -78,17 +84,22 @@ lib/
   salesModules.ts     the 5 domain questionnaires for the verkoopmodule
 context/AuthProvider.tsx
 supabase/migrations/  SQL schema + RLS policies
+scripts/backup-opmetingen/  standalone daily backup script (see its own README)
 project/, chats/      the original Claude Design handoff (reference only)
 ```
 
 ## Data model
 
-`profiles` (role: tech/werfleider/sales/mgmt) · `werven` (sites) ·
-`werf_members` (who's assigned where, and who leads) · `werfrapporten` ·
-`werfrapport_fotos` · `werfrapport_reacties` · `werf_chat_berichten` ·
-`werf_chat_reads` · `opmetingen` · `opmeting_fotos`. RLS enforces the same
-sharing rules as the prototype: a report is visible to its author, to
-management (if shared with management), and to the site's crew (if shared
-with the site); a werfchat thread is visible to management and to that
-site's crew; an opmeting is visible to the verkoper who created it and to
-management — see the policies in the migrations for the exact rules.
+`profiles` (role: tech/werfleider/sales/mgmt, plus `verlof_dagen` and
+`inhaalrust_dagen` balances — management-adjustable via SQL for now, no
+UI yet) · `werven` (sites) · `werf_members` (who's assigned where, and who
+leads) · `werfrapporten` · `werfrapport_fotos` · `werfrapport_reacties` ·
+`werf_chat_berichten` · `werf_chat_reads` · `opmetingen` · `opmeting_fotos` ·
+`verlofaanvragen`. RLS enforces the same sharing rules as the prototype: a
+report is visible to its author, to management (if shared with
+management), and to the site's crew (if shared with the site); a werfchat
+thread is visible to management and to that site's crew; an opmeting is
+visible to the verkoper who created it and to management; a
+verlofaanvraag is visible to its aanvrager, to management, and (while
+pending or approved) to that person's werf-mates for conflict checking —
+see the policies in the migrations for the exact rules.
