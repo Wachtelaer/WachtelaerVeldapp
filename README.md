@@ -19,10 +19,16 @@ and Supabase. This implements phases of the design in
 - **Phase 2c — verlofaanvragen**: request leave (type/period/note) with a
   live check of which same-site colleagues are already off in that period;
   management approves or rejects, seeing a computed crew-availability note
-  per request. Also offline-queued.
+  per request. Management also has an "Overzicht" of every request, sorted
+  by period. Also offline-queued.
+- **Phase 2d — plannen & documenten**: versioned plans/PDFs per site.
+  Uploading a file under a title that already exists on that site creates
+  a new version instead of a new document; the crew always sees the latest
+  version first, with older ones collapsed underneath. A "nieuw" badge
+  tracks what's been uploaded since a user's last visit (same pattern as
+  werfchat's unread indicator). Upload is management-only for now.
 
-Plannen/documenten is in the prototype but not yet built here; it's the
-natural next phase.
+All five phases from the prototype are now built.
 
 ## Stack
 
@@ -39,7 +45,7 @@ natural next phase.
    the SQL editor, or `supabase db push` if you use the Supabase CLI
    locally): `0001_werfrapporten.sql`, `0002_harden_helper_functions.sql`,
    `0003_werfchat.sql`, `0004_verkoop_opmetingen.sql`,
-   `0005_verlofaanvragen.sql`.
+   `0005_verlofaanvragen.sql`, `0006_plannen.sql`.
 3. Optionally run `supabase/seed.sql` for the three demo werven from the
    prototype.
 4. Create employee accounts under Authentication → Users (or have them sign
@@ -74,7 +80,7 @@ app/                  expo-router screens (file-based routing)
     werven/           werven list, werf detail, nieuw rapport, rapport view,
                       and (for sales) opmeting/modules|[mod]|klaar
     chat/             thread list (one per werf) + message thread
-    plannen.tsx       stub — phase 2
+    plannen/          thread-list-style werven list + per-werf document list
     meer/             profile + sign out, and verlof (leave requests)
 lib/
   api/                Supabase queries, one module per feature
@@ -95,11 +101,13 @@ project/, chats/      the original Claude Design handoff (reference only)
 UI yet) · `werven` (sites) · `werf_members` (who's assigned where, and who
 leads) · `werfrapporten` · `werfrapport_fotos` · `werfrapport_reacties` ·
 `werf_chat_berichten` · `werf_chat_reads` · `opmetingen` · `opmeting_fotos` ·
-`verlofaanvragen`. RLS enforces the same sharing rules as the prototype: a
-report is visible to its author, to management (if shared with
-management), and to the site's crew (if shared with the site); a werfchat
-thread is visible to management and to that site's crew; an opmeting is
-visible to the verkoper who created it and to management; a
-verlofaanvraag is visible to its aanvrager, to management, and (while
-pending or approved) to that person's werf-mates for conflict checking —
-see the policies in the migrations for the exact rules.
+`verlofaanvragen` · `plan_documenten` · `plan_versies` · `plan_reads`. RLS
+enforces the same sharing rules as the prototype: a report is visible to
+its author, to management (if shared with management), and to the site's
+crew (if shared with the site); a werfchat thread is visible to
+management and to that site's crew; an opmeting is visible to the
+verkoper who created it and to management; a verlofaanvraag is visible to
+its aanvrager, to management, and (while pending or approved) to that
+person's werf-mates for conflict checking; a plan document/version is
+visible to management and that site's crew, but only management can
+upload — see the policies in the migrations for the exact rules.

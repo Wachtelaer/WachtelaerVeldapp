@@ -99,7 +99,7 @@ export default function WerfDetailScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.secondaryAction}
-                onPress={() => router.push('/plannen')}
+                onPress={() => router.push(`/plannen/${werf.id}`)}
                 accessibilityRole="button">
                 <Ionicons name="document-text-outline" size={16} color={colors.accent} />
                 <Text style={styles.secondaryActionLabel}>Plannen</Text>

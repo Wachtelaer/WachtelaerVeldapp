@@ -112,6 +112,29 @@ export interface Verlofaanvraag {
   created_at: string;
 }
 
+export interface PlanDocument {
+  id: string;
+  werf_id: string;
+  titel: string;
+  created_at: string;
+}
+
+export interface PlanVersie {
+  id: string;
+  document_id: string;
+  versie_nummer: number;
+  storage_path: string;
+  bestandsnaam: string;
+  geupload_door: string;
+  created_at: string;
+}
+
+export interface PlanRead {
+  werf_id: string;
+  profile_id: string;
+  last_read_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -154,6 +177,17 @@ export interface Database {
         Insert: Partial<Verlofaanvraag> & Pick<Verlofaanvraag, 'aanvrager_id' | 'type' | 'van' | 'tot'>;
         Update: Partial<Verlofaanvraag>;
       };
+      plan_documenten: {
+        Row: PlanDocument;
+        Insert: Partial<PlanDocument> & Pick<PlanDocument, 'werf_id' | 'titel'>;
+        Update: Partial<PlanDocument>;
+      };
+      plan_versies: {
+        Row: PlanVersie;
+        Insert: Partial<PlanVersie> & Pick<PlanVersie, 'document_id' | 'versie_nummer' | 'storage_path' | 'bestandsnaam' | 'geupload_door'>;
+        Update: Partial<PlanVersie>;
+      };
+      plan_reads: { Row: PlanRead; Insert: PlanRead; Update: Partial<PlanRead> };
     };
   };
 }
