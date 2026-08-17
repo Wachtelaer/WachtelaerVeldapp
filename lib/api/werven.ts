@@ -8,7 +8,11 @@ export interface WerfListItem extends Werf {
   laatsteRapport: Pick<Werfrapport, 'id' | 'datum' | 'uitgevoerd' | 'knelpunt'> | null;
   isLeider: boolean;
 }
-
+export async function listAlleWerven(): Promise<Pick<Werf, 'id' | 'naam'>[]> {
+  const { data, error } = await supabase.from('werven').select('id, naam').order('naam');
+  if (error) throw error;
+  return data ?? [];
+}
 export async function listWervenWithSummary(profileId: string): Promise<WerfListItem[]> {
   const [{ data: werven, error: wErr }, { data: members, error: mErr }, { data: summaries, error: sErr }] =
     await Promise.all([

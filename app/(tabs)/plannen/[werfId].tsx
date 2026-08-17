@@ -16,9 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { AppHeader } from '@/components/AppHeader';
 import { BackRow, Tag } from '@/components/ui/Basics';
-import { TextField } from '@/components/ui/Form';
+import { ChipGroup, FieldLabel, TextField } from '@/components/ui/Form';
 import { useAuth } from '@/context/AuthProvider';
-import { getWerf } from '@/lib/api/werven';
+import { getWerf, listAlleWerven } from '@/lib/api/werven';
 import { getPlanUrl, listDocumenten, markPlannenRead, uploadPlan, type DocumentMetVersies } from '@/lib/api/plannen';
 import type { Werf } from '@/lib/database.types';
 import { colors, fonts } from '@/lib/theme';
@@ -36,6 +36,8 @@ export default function PlannenWerfScreen() {
   const [pendingFile, setPendingFile] = useState<{ uri: string; name: string; mimeType: string } | null>(null);
   const [titel, setTitel] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [alleWerven, setAlleWerven] = useState<{ id: string; naam: string }[]>([]);
+  const [doelWerfNaam, setDoelWerfNaam] = useState<string>('');
 
   const load = useCallback(async () => {
     if (!werfId || !profile) return;
@@ -45,10 +47,13 @@ export default function PlannenWerfScreen() {
       setWerf(w);
       setDocumenten(docs);
       await markPlannenRead(werfId, profile.id);
+      if (isMgmt && alleWerven.length === 0) {
+        setAlleWerven(await listAlleWerven());
+      }
     } catch (e: any) {
       setError(e.message ?? 'Kon plannen niet laden');
     }
-  }, [werfId, profile]);
+  }, [werfId, profile, isMgmt, alleWerven.length]);
 
   useFocusEffect(
     useCallback(() => {
@@ -67,14 +72,16 @@ export default function PlannenWerfScreen() {
     const asset = result.assets[0];
     setPendingFile({ uri: asset.uri, name: asset.name, mimeType: asset.mimeType || 'application/octet-stream' });
     setTitel(asset.name.replace(/\.[^./]+$/, ''));
+    setDoelWerfNaam(werf?.naam ?? alleWerven[0]?.naam ?? '');
   };
 
   const confirmUpload = async () => {
-    if (!pendingFile || !werfId || !profile || !titel.trim()) return;
+    const doelWerf = alleWerven.find((w) => w.naam === doelWerfNaam);
+    if (!pendingFile || !doelWerf || !profile || !titel.trim()) return;
     setUploading(true);
     try {
       await uploadPlan({
-        werfId,
+        werfId: doelWerf.id,
         titel: titel.trim(),
         fileUri: pendingFile.uri,
         fileName: pendingFile.name,
@@ -162,18 +169,23 @@ export default function PlannenWerfScreen() {
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.sheetTitle}>Plan toevoegen</Text>
             <Text style={styles.sheetFile}>{pendingFile?.name}</Text>
+
+            <FieldLabel>Werf</FieldLabel>
+            <ChipGroup opties={alleWerven.map((w) => w.naam)} value={doelWerfNaam} onChange={(v) => setDoelWerfNaam(v as string)} />
+
+            <FieldLabel>Titel</FieldLabel>
             <TextField value={titel} onChangeText={setTitel} placeholder="Titel van het document" />
             <Text style={styles.sheetHint}>
-              Bestaat er al een document met deze titel op deze werf? Dan wordt dit een nieuwe versie ervan.
+              Bestaat er al een document met deze titel op de gekozen werf? Dan wordt dit een nieuwe versie ervan.
             </Text>
             <View style={styles.sheetRow}>
               <TouchableOpacity style={styles.sheetCancel} onPress={() => setPendingFile(null)} accessibilityRole="button">
                 <Text style={styles.sheetCancelText}>Annuleren</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.sheetConfirm, (!titel.trim() || uploading) && styles.sheetConfirmDisabled]}
+                style={[styles.sheetConfirm, (!titel.trim() || !doelWerfNaam || uploading) && styles.sheetConfirmDisabled]}
                 onPress={confirmUpload}
-                disabled={!titel.trim() || uploading}
+                disabled={!titel.trim() || !doelWerfNaam || uploading}
                 accessibilityRole="button">
                 {uploading ? (
                   <ActivityIndicator color={colors.white} />
