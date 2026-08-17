@@ -42,12 +42,15 @@ export default function MeerTab() {
           <Ionicons name="chevron-forward" size={16} color={colors.accent} />
         </TouchableOpacity>
 
-        <View style={styles.card}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>Ploeg &amp; rechten</Text>
-            <Text style={styles.cardBody}>Komt in de volgende fase.</Text>
-          </View>
-        </View>
+        {isMgmt ? (
+          <TouchableOpacity style={styles.card} onPress={() => router.push('/meer/ploeg')} accessibilityRole="button">
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>Ploeg &amp; rechten</Text>
+              <Text style={styles.cardBody}>Rol, verlofsaldo en werftoewijzingen per medewerker.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+          </TouchableOpacity>
+        ) : null}
         <View style={styles.noteCard}>
           <Text style={styles.noteTitle}>Werkbonnen</Text>
           <Text style={styles.noteBody}>
