@@ -57,7 +57,7 @@ export interface TeKeurenItem extends Verlofaanvraag {
 export async function listTeKeuren(): Promise<TeKeurenItem[]> {
   const { data, error } = await supabase
     .from('verlofaanvragen')
-    .select('*, profiles!verlofaanvragen_aanvrager_id_fkey(full_name)')
+    .select('*, profiles!aanvrager_id(full_name)')
     .eq('status', 'wacht')
     .order('created_at', { ascending: true });
   if (error) throw error;
@@ -103,7 +103,7 @@ export async function getConflict(aanvragerId: string, van: string, tot: string)
 
   const { data: overlapping, error: oErr } = await supabase
     .from('verlofaanvragen')
-    .select('type, van, tot, status, profiles!verlofaanvragen_aanvrager_id_fkey(full_name)')
+    .select('type, van, tot, status, profiles!aanvrager_id(full_name)')
     .in('aanvrager_id', mateIds)
     .in('status', ['wacht', 'goed'])
     .lte('van', tot)

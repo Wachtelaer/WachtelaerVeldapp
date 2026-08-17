@@ -5,7 +5,8 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { AppHeader } from '@/components/AppHeader';
 import { BackRow, KpiTile, SectionLabel, Tag } from '@/components/ui/Basics';
 import { Button } from '@/components/ui/Button';
-import { FieldLabel, Segmented, TextArea, TextField } from '@/components/ui/Form';
+import { DatePickerField } from '@/components/ui/DatePickerField';
+import { FieldLabel, Segmented, TextArea } from '@/components/ui/Form';
 import { useAuth } from '@/context/AuthProvider';
 import {
   beoordeel,
@@ -42,10 +43,16 @@ export default function VerlofScreen() {
 function TeKeurenView() {
   const { profile } = useAuth();
   const [items, setItems] = useState<TeKeurenItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setItems(await listTeKeuren());
+    try {
+      setError(null);
+      setItems(await listTeKeuren());
+    } catch (e: any) {
+      setError(e.message ?? 'Kon aanvragen niet laden');
+    }
   }, []);
 
   useFocusEffect(
@@ -72,7 +79,8 @@ function TeKeurenView() {
         <Text style={styles.subtitle}>Je ziet meteen wie er op die dagen al weg is en op welke werf die persoon staat.</Text>
       </View>
 
-      {items === null ? <ActivityIndicator color={colors.accent} style={{ marginTop: 24 }} /> : null}
+      {items === null && !error ? <ActivityIndicator color={colors.accent} style={{ marginTop: 24 }} /> : null}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
       {items?.length === 0 ? <Text style={styles.empty}>Niets meer te beoordelen.</Text> : null}
 
       {items?.map((a) => (
@@ -104,12 +112,18 @@ function AanvraagView() {
   const [mijnAanvragen, setMijnAanvragen] = useState<Verlofaanvraag[] | null>(null);
   const [inBehandeling, setInBehandeling] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!profile) return;
-    const [aanvragen, wacht] = await Promise.all([listMijnAanvragen(profile.id), countInBehandeling(profile.id)]);
-    setMijnAanvragen(aanvragen);
-    setInBehandeling(wacht);
+    try {
+      setError(null);
+      const [aanvragen, wacht] = await Promise.all([listMijnAanvragen(profile.id), countInBehandeling(profile.id)]);
+      setMijnAanvragen(aanvragen);
+      setInBehandeling(wacht);
+    } catch (e: any) {
+      setError(e.message ?? 'Kon aanvragen niet laden');
+    }
   }, [profile]);
 
   useFocusEffect(
@@ -124,12 +138,15 @@ function AanvraagView() {
       setConflict('Kies een periode om te checken wie er al weg is.');
       return;
     }
-    getConflict(profile.id, van, tot).then(setConflict);
+    getConflict(profile.id, van, tot)
+      .then(setConflict)
+      .catch((e: any) => setConflict(`Kon niet checken: ${e.message ?? 'onbekende fout'}`));
   }, [profile, van, tot]);
 
   const submit = async () => {
     if (!profile || !van || !tot) return;
     setSubmitting(true);
+    setError(null);
     const payload = { aanvragerId: profile.id, type, van, tot, nota: nota.trim() };
     try {
       if (isOnline) await createAanvraag(payload);
@@ -138,6 +155,8 @@ function AanvraagView() {
       setVan('');
       setTot('');
       await load();
+    } catch (e: any) {
+      setError(e.message ?? 'Aanvraag versturen mislukt');
     } finally {
       setSubmitting(false);
     }
@@ -149,6 +168,8 @@ function AanvraagView() {
         <Text style={styles.title}>Verlof aanvragen</Text>
         <Text style={styles.subtitle}>Je aanvraag gaat naar management. Je ziet er meteen bij of er die dagen al iemand van jouw werf weg is.</Text>
       </View>
+
+      {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.kpiRow}>
         <KpiTile value={String(profile?.verlof_dagen ?? 0)} label="dagen over" />
@@ -164,11 +185,11 @@ function AanvraagView() {
       <View style={styles.row}>
         <View style={{ flex: 1, gap: 6 }}>
           <FieldLabel>Van</FieldLabel>
-          <TextField value={van} onChangeText={setVan} placeholder="JJJJ-MM-DD" />
+          <DatePickerField value={van} onChange={setVan} />
         </View>
         <View style={{ flex: 1, gap: 6 }}>
           <FieldLabel>Tot</FieldLabel>
-          <TextField value={tot} onChangeText={setTot} placeholder="JJJJ-MM-DD" />
+          <DatePickerField value={tot} onChange={setTot} />
         </View>
       </View>
 
@@ -224,6 +245,7 @@ const styles = StyleSheet.create({
   body: { padding: 16, gap: 16, paddingBottom: 48 },
   title: { fontFamily: fonts.heading, fontSize: 24, textTransform: 'uppercase', color: colors.ink },
   subtitle: { fontFamily: fonts.body, fontSize: 13, color: colors.inkMuted, marginTop: 5, lineHeight: 19 },
+  error: { fontFamily: fonts.body, fontSize: 13, color: colors.danger },
   empty: { fontFamily: fonts.body, fontSize: 13, color: colors.inkMuted, borderWidth: 1, borderColor: colors.dividerStrong, borderStyle: 'dashed', padding: 14 },
   kpiRow: { flexDirection: 'row', gap: 1, backgroundColor: colors.divider, borderWidth: 1, borderColor: colors.divider },
   row: { flexDirection: 'row', gap: 10 },
