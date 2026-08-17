@@ -206,41 +206,39 @@ export default function WervenHomeScreen() {
           <View>
             <SectionLabel>Werven</SectionLabel>
             {werven.map((w) => (
-              <TouchableOpacity
-                key={w.id}
-                style={styles.card}
-                onPress={() => router.push(`/werven/${w.id}`)}
-                accessibilityRole="button">
-                <View style={styles.cardTop}>
-                  <Text style={styles.cardName} numberOfLines={1}>
-                    {w.naam}
-                  </Text>
-                  <View style={styles.cardTopRight}>
+              <View key={w.id} style={styles.cardWrap}>
+                <TouchableOpacity
+                  style={[styles.card, styles.cardInWrap]}
+                  onPress={() => router.push(`/werven/${w.id}`)}
+                  accessibilityRole="button">
+                  <View style={[styles.cardTop, isMgmt && styles.cardTopWithDelete]}>
+                    <Text style={styles.cardName} numberOfLines={1}>
+                      {w.naam}
+                    </Text>
                     <Text style={styles.cardFase}>{w.fase}</Text>
-                    {isMgmt ? (
-                      <TouchableOpacity
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          openDelete(w);
-                        }}
-                        accessibilityRole="button"
-                        hitSlop={8}>
-                        <Ionicons name="trash-outline" size={16} color={colors.danger} />
-                      </TouchableOpacity>
-                    ) : null}
                   </View>
-                </View>
-                <Text style={styles.cardMeta} numberOfLines={2}>
-                  {w.laatsteRapport
-                    ? `Rapport ${formatDatum(w.laatsteRapport.datum)} — ${w.laatsteRapport.uitgevoerd || w.laatsteRapport.knelpunt || '—'}`
-                    : 'Nog geen rapport'}
-                </Text>
-                <View style={styles.tagRow}>
-                  <Tag label={`${w.fotoCount} foto's`} />
-                  <Tag label={`${w.rapportCount} rapporten`} />
-                  {w.laatsteRapport?.knelpunt?.trim() ? <Tag label="knelpunt" tone="accent" /> : null}
-                </View>
-              </TouchableOpacity>
+                  <Text style={styles.cardMeta} numberOfLines={2}>
+                    {w.laatsteRapport
+                      ? `Rapport ${formatDatum(w.laatsteRapport.datum)} — ${w.laatsteRapport.uitgevoerd || w.laatsteRapport.knelpunt || '—'}`
+                      : 'Nog geen rapport'}
+                  </Text>
+                  <View style={styles.tagRow}>
+                    <Tag label={`${w.fotoCount} foto's`} />
+                    <Tag label={`${w.rapportCount} rapporten`} />
+                    {w.laatsteRapport?.knelpunt?.trim() ? <Tag label="knelpunt" tone="accent" /> : null}
+                  </View>
+                </TouchableOpacity>
+
+                {isMgmt ? (
+                  <TouchableOpacity
+                    style={styles.deleteBtn}
+                    onPress={() => openDelete(w)}
+                    accessibilityRole="button"
+                    hitSlop={8}>
+                    <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
             ))}
           </View>
         ) : null}
@@ -347,8 +345,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     gap: 7,
   },
+  cardWrap: { position: 'relative', marginBottom: 8 },
+  cardInWrap: { marginBottom: 0 },
+  deleteBtn: { position: 'absolute', top: 12, right: 12, padding: 4 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
-  cardTopRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cardTopWithDelete: { paddingRight: 22 },
   cardName: { fontFamily: fonts.heading, fontSize: 17, textTransform: 'uppercase', color: colors.ink, flexShrink: 1 },
   cardFase: { fontFamily: fonts.monoMedium, fontSize: 12, color: colors.accentDark },
   cardMeta: { fontFamily: fonts.body, fontSize: 13, color: colors.inkMuted },
