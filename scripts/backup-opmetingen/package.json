@@ -1,0 +1,16 @@
+{
+  "name": "wachtelaer-opmetingen-backup",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Daily local backup of opmetingen (PDF) and their photos (zip) to a Windows folder.",
+  "main": "backup.js",
+  "scripts": {
+    "backup": "node backup.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.112.3",
+    "archiver": "7.0.1",
+    "dotenv": "17.4.2",
+    "pdfkit": "0.19.1"
+  }
+}
