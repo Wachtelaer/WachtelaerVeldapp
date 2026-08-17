@@ -1,12 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { AppHeader } from '@/components/AppHeader';
 import { KpiTile, SectionLabel, Tag } from '@/components/ui/Basics';
 import { Button } from '@/components/ui/Button';
+import { FieldLabel, TextField } from '@/components/ui/Form';
 import { useAuth } from '@/context/AuthProvider';
-import { listWervenWithSummary, type WerfListItem } from '@/lib/api/werven';
+import { createWerf, deleteWerf, listWervenWithSummary, type WerfListItem } from '@/lib/api/werven';
 import { listMyOpmetingen, type OpmetingListItem } from '@/lib/api/opmetingen';
 import { getModule, summarizeAntwoorden } from '@/lib/salesModules';
 import { colors, fonts, roleLabels } from '@/lib/theme';
@@ -17,6 +29,19 @@ export default function WervenHomeScreen() {
   const [opmetingen, setOpmetingen] = useState<OpmetingListItem[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [newCode, setNewCode] = useState('');
+  const [newNaam, setNewNaam] = useState('');
+  const [newAdres, setNewAdres] = useState('');
+  const [newFase, setNewFase] = useState('opstart');
+  const [addSaving, setAddSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+
+  const [deleteTarget, setDeleteTarget] = useState<WerfListItem | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const isSales = profile?.role === 'sales';
 
@@ -49,6 +74,57 @@ export default function WervenHomeScreen() {
     setRefreshing(true);
     await load();
     setRefreshing(false);
+  };
+
+  const openAdd = () => {
+    setNewCode('');
+    setNewNaam('');
+    setNewAdres('');
+    setNewFase('opstart');
+    setAddError(null);
+    setAddOpen(true);
+  };
+
+  const submitAdd = async () => {
+    const code = newCode.trim();
+    const naam = newNaam.trim();
+    const adres = newAdres.trim();
+    if (!code || !naam || !adres) {
+      setAddError('Vul code, naam en adres in');
+      return;
+    }
+    setAddSaving(true);
+    setAddError(null);
+    try {
+      await createWerf({ code, naam, adres, fase: newFase.trim() });
+      setAddOpen(false);
+      await load();
+    } catch (e: any) {
+      setAddError(e.message ?? 'Kon werf niet aanmaken');
+    } finally {
+      setAddSaving(false);
+    }
+  };
+
+  const openDelete = (w: WerfListItem) => {
+    setDeleteTarget(w);
+    setDeleteConfirmText('');
+    setDeleteError(null);
+  };
+
+  const submitDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteWerf(deleteTarget.id);
+      setDeleteTarget(null);
+      await load();
+    } catch (e: any) {
+      setDeleteError(e.message ?? 'Kon werf niet verwijderen');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const isMgmt = profile?.role === 'mgmt';
@@ -84,6 +160,8 @@ export default function WervenHomeScreen() {
             <KpiTile value={String(werven.reduce((n, w) => n + w.rapportCount, 0))} label="rapporten totaal" />
           </View>
         ) : null}
+
+        {isMgmt ? <Button label="+ nieuwe werf" variant="secondary" onPress={openAdd} /> : null}
 
         {isWerfleider && eigenWerven.length === 1 ? (
           <Button
@@ -137,7 +215,20 @@ export default function WervenHomeScreen() {
                   <Text style={styles.cardName} numberOfLines={1}>
                     {w.naam}
                   </Text>
-                  <Text style={styles.cardFase}>{w.fase}</Text>
+                  <View style={styles.cardTopRight}>
+                    <Text style={styles.cardFase}>{w.fase}</Text>
+                    {isMgmt ? (
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          openDelete(w);
+                        }}
+                        accessibilityRole="button"
+                        hitSlop={8}>
+                        <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
                 </View>
                 <Text style={styles.cardMeta} numberOfLines={2}>
                   {w.laatsteRapport
@@ -158,6 +249,79 @@ export default function WervenHomeScreen() {
           <Text style={styles.empty}>Je bent nog aan geen enkele werf toegewezen.</Text>
         ) : null}
       </ScrollView>
+
+      <Modal visible={addOpen} transparent animationType="fade" onRequestClose={() => setAddOpen(false)}>
+        <Pressable style={styles.backdrop} onPress={() => setAddOpen(false)}>
+          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.sheetTitle}>Nieuwe werf</Text>
+
+            <FieldLabel>Code</FieldLabel>
+            <TextField value={newCode} onChangeText={setNewCode} placeholder="bv. W-2026-070" autoCapitalize="characters" />
+
+            <FieldLabel>Naam</FieldLabel>
+            <TextField value={newNaam} onChangeText={setNewNaam} placeholder="bv. Residentie De Linde" />
+
+            <FieldLabel>Adres</FieldLabel>
+            <TextField value={newAdres} onChangeText={setNewAdres} placeholder="Straat, nummer, gemeente" />
+
+            <FieldLabel>Fase</FieldLabel>
+            <TextField value={newFase} onChangeText={setNewFase} placeholder="bv. opstart, ruwbouw, afwerking" />
+
+            {addError ? <Text style={styles.error}>{addError}</Text> : null}
+
+            <View style={styles.sheetRow}>
+              <TouchableOpacity style={styles.sheetCancel} onPress={() => setAddOpen(false)} accessibilityRole="button">
+                <Text style={styles.sheetCancelText}>Annuleren</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.sheetConfirm, addSaving && styles.sheetConfirmDisabled]}
+                onPress={submitAdd}
+                disabled={addSaving}
+                accessibilityRole="button">
+                {addSaving ? <ActivityIndicator color={colors.white} /> : <Text style={styles.sheetConfirmText}>Aanmaken</Text>}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={!!deleteTarget} transparent animationType="fade" onRequestClose={() => setDeleteTarget(null)}>
+        <Pressable style={styles.backdrop} onPress={() => setDeleteTarget(null)}>
+          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.sheetTitle}>Werf verwijderen</Text>
+            <Text style={styles.sheetWarning}>
+              Dit verwijdert <Text style={styles.sheetWarningBold}>{deleteTarget?.naam}</Text> definitief, samen met al
+              haar rapporten, chatberichten en plannen. Dit kan niet ongedaan gemaakt worden.
+            </Text>
+
+            <FieldLabel>{`Typ de code "${deleteTarget?.code}" om te bevestigen`}</FieldLabel>
+            <TextField
+              value={deleteConfirmText}
+              onChangeText={setDeleteConfirmText}
+              placeholder={deleteTarget?.code}
+              autoCapitalize="characters"
+            />
+
+            {deleteError ? <Text style={styles.error}>{deleteError}</Text> : null}
+
+            <View style={styles.sheetRow}>
+              <TouchableOpacity style={styles.sheetCancel} onPress={() => setDeleteTarget(null)} accessibilityRole="button">
+                <Text style={styles.sheetCancelText}>Annuleren</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.sheetDelete,
+                  (deleting || deleteConfirmText.trim() !== deleteTarget?.code) && styles.sheetConfirmDisabled,
+                ]}
+                onPress={submitDelete}
+                disabled={deleting || deleteConfirmText.trim() !== deleteTarget?.code}
+                accessibilityRole="button">
+                {deleting ? <ActivityIndicator color={colors.white} /> : <Text style={styles.sheetConfirmText}>Verwijderen</Text>}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -184,9 +348,45 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
+  cardTopRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   cardName: { fontFamily: fonts.heading, fontSize: 17, textTransform: 'uppercase', color: colors.ink, flexShrink: 1 },
   cardFase: { fontFamily: fonts.monoMedium, fontSize: 12, color: colors.accentDark },
   cardMeta: { fontFamily: fonts.body, fontSize: 13, color: colors.inkMuted },
   tagRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   empty: { fontFamily: fonts.body, fontSize: 14, color: colors.inkMuted, marginTop: 12 },
+  backdrop: { flex: 1, backgroundColor: 'rgba(29,31,32,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  sheet: { width: '100%', maxWidth: 380, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.ink, padding: 16, gap: 10 },
+  sheetTitle: { fontFamily: fonts.heading, fontSize: 18, textTransform: 'uppercase', color: colors.ink },
+  sheetWarning: { fontFamily: fonts.body, fontSize: 13, color: colors.ink, lineHeight: 18 },
+  sheetWarningBold: { fontFamily: fonts.bodyMedium, color: colors.ink },
+  sheetRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  sheetCancel: {
+    flex: 1,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: colors.dividerStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetCancelText: { fontFamily: fonts.heading, fontSize: 13, letterSpacing: 0.8, textTransform: 'uppercase', color: colors.ink },
+  sheetConfirm: {
+    flex: 1,
+    minHeight: 44,
+    backgroundColor: colors.accent,
+    borderWidth: 1,
+    borderColor: colors.accentDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetDelete: {
+    flex: 1,
+    minHeight: 44,
+    backgroundColor: colors.danger,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetConfirmDisabled: { opacity: 0.5 },
+  sheetConfirmText: { fontFamily: fonts.heading, fontSize: 13, letterSpacing: 0.8, textTransform: 'uppercase', color: colors.white },
 });

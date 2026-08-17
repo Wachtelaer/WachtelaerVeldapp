@@ -8,11 +8,28 @@ export interface WerfListItem extends Werf {
   laatsteRapport: Pick<Werfrapport, 'id' | 'datum' | 'uitgevoerd' | 'knelpunt'> | null;
   isLeider: boolean;
 }
+
 export async function listAlleWerven(): Promise<Pick<Werf, 'id' | 'naam'>[]> {
   const { data, error } = await supabase.from('werven').select('id, naam').order('naam');
   if (error) throw error;
   return data ?? [];
 }
+
+export async function createWerf(input: { code: string; naam: string; adres: string; fase?: string }): Promise<Werf> {
+  const { data, error } = await supabase
+    .from('werven')
+    .insert({ code: input.code, naam: input.naam, adres: input.adres, fase: input.fase || 'opstart' })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteWerf(werfId: string): Promise<void> {
+  const { error } = await supabase.from('werven').delete().eq('id', werfId);
+  if (error) throw error;
+}
+
 export async function listWervenWithSummary(profileId: string): Promise<WerfListItem[]> {
   const [{ data: werven, error: wErr }, { data: members, error: mErr }, { data: summaries, error: sErr }] =
     await Promise.all([
