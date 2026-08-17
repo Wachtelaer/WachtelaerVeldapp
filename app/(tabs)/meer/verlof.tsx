@@ -13,8 +13,10 @@ import {
   countInBehandeling,
   createAanvraag,
   getConflict,
+  listAlleAanvragen,
   listMijnAanvragen,
   listTeKeuren,
+  type AanvraagOverzichtItem,
   type TeKeurenItem,
 } from '@/lib/api/verlof';
 import { enqueueVerlofaanvraag, useConnectivity } from '@/lib/offlineQueue';
@@ -43,13 +45,16 @@ export default function VerlofScreen() {
 function TeKeurenView() {
   const { profile } = useAuth();
   const [items, setItems] = useState<TeKeurenItem[] | null>(null);
+  const [overzicht, setOverzicht] = useState<AanvraagOverzichtItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       setError(null);
-      setItems(await listTeKeuren());
+      const [teKeuren, alle] = await Promise.all([listTeKeuren(), listAlleAanvragen()]);
+      setItems(teKeuren);
+      setOverzicht(alle);
     } catch (e: any) {
       setError(e.message ?? 'Kon aanvragen niet laden');
     }
@@ -97,6 +102,23 @@ function TeKeurenView() {
           </View>
         </View>
       ))}
+
+      <View>
+        <SectionLabel>Overzicht — alle aanvragen, op periode</SectionLabel>
+        {overzicht?.length === 0 ? <Text style={styles.empty}>Nog geen aanvragen.</Text> : null}
+        {overzicht?.map((a) => (
+          <View key={a.id} style={styles.aanvraagRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.aanvraagPeriode}>{`${a.aanvragerNaam} — ${periodeLabel(a.van, a.tot)}`}</Text>
+              <Text style={styles.aanvraagMeta}>{`${a.type} · ${dagenTussen(a.van, a.tot)}`}</Text>
+            </View>
+            <Tag
+              label={a.status === 'goed' ? 'goedgekeurd' : a.status === 'nee' ? 'geweigerd' : 'in behandeling'}
+              tone={a.status === 'goed' ? 'accent' : 'neutral'}
+            />
+          </View>
+        ))}
+      </View>
     </ScrollView>
   );
 }

@@ -54,6 +54,20 @@ export interface TeKeurenItem extends Verlofaanvraag {
   impact: string;
 }
 
+export interface AanvraagOverzichtItem extends Verlofaanvraag {
+  aanvragerNaam: string;
+}
+
+/** All aanvragen (any status), sorted by period start — for management's overview. */
+export async function listAlleAanvragen(): Promise<AanvraagOverzichtItem[]> {
+  const { data, error } = await supabase
+    .from('verlofaanvragen')
+    .select('*, profiles!aanvrager_id(full_name)')
+    .order('van', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((a: any) => ({ ...a, aanvragerNaam: a.profiles?.full_name ?? 'Onbekend' }));
+}
+
 export async function listTeKeuren(): Promise<TeKeurenItem[]> {
   const { data, error } = await supabase
     .from('verlofaanvragen')
