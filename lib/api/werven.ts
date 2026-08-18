@@ -10,7 +10,7 @@ export interface WerfListItem extends Werf {
 }
 
 export async function listAlleWerven(): Promise<Pick<Werf, 'id' | 'naam'>[]> {
-  const { data, error } = await supabase.from('werven').select('id, naam').order('naam');
+  const { data, error } = await supabase.from('werven').select('id, naam').eq('is_algemeen', false).order('naam');
   if (error) throw error;
   return data ?? [];
 }
@@ -33,7 +33,7 @@ export async function deleteWerf(werfId: string): Promise<void> {
 export async function listWervenWithSummary(profileId: string): Promise<WerfListItem[]> {
   const [{ data: werven, error: wErr }, { data: members, error: mErr }, { data: summaries, error: sErr }] =
     await Promise.all([
-      supabase.from('werven').select('*').order('naam'),
+      supabase.from('werven').select('*').eq('is_algemeen', false).order('naam'),
       supabase.from('werf_members').select('werf_id, profile_id, is_leider, profiles(full_name)'),
       supabase.from('werf_summary').select('*'),
     ]);

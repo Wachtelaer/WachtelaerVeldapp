@@ -9,6 +9,7 @@ const CHAT_FOTOS_BUCKET = 'werfchat-fotos';
 export interface ChatThread {
   werfId: string;
   werfNaam: string;
+  isAlgemeen: boolean;
   ledenCount: number;
   laatste: (WerfChatBericht & { auteurNaam: string }) | null;
   ongelezen: boolean;
@@ -17,7 +18,7 @@ export interface ChatThread {
 export async function listChatThreads(profileId: string): Promise<ChatThread[]> {
   const [{ data: werven, error: wErr }, { data: reads, error: rErr }, { data: members, error: mErr }] =
     await Promise.all([
-      supabase.from('werven').select('id, naam').order('naam'),
+      supabase.from('werven').select('id, naam, is_algemeen').order('naam'),
       supabase.from('werf_chat_reads').select('werf_id, last_read_at').eq('profile_id', profileId),
       supabase.from('werf_members').select('werf_id'),
     ]);
@@ -51,12 +52,16 @@ export async function listChatThreads(profileId: string): Promise<ChatThread[]> 
       return {
         werfId: w.id,
         werfNaam: w.naam,
+        isAlgemeen: w.is_algemeen,
         ledenCount: ledenCountByWerf.get(w.id) ?? 0,
         laatste: laatsteBericht,
         ongelezen,
       };
     })
   );
+
+  // The general chat always leads the list, regardless of alphabetical order.
+  threads.sort((a, b) => Number(b.isAlgemeen) - Number(a.isAlgemeen));
 
   return threads;
 }

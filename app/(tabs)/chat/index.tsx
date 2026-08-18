@@ -50,11 +50,12 @@ export default function ChatThreadsScreen() {
         {threads?.map((t) => (
           <TouchableOpacity
             key={t.werfId}
-            style={styles.card}
+            style={[styles.card, t.isAlgemeen && styles.cardAlgemeen]}
             onPress={() => router.push(`/chat/${t.werfId}`)}
             accessibilityRole="button">
             <View style={styles.cardTop}>
               <Text style={styles.cardTitel} numberOfLines={1}>
+                {t.isAlgemeen ? '📢 ' : ''}
                 {t.werfNaam}
               </Text>
               <Text style={styles.cardTijd}>{t.laatste ? formatTijd(t.laatste.created_at) : ''}</Text>
@@ -65,7 +66,7 @@ export default function ChatThreadsScreen() {
                 : 'Nog geen berichten'}
             </Text>
             <View style={styles.tagRow}>
-              <Tag label={`${t.ledenCount} leden`} />
+              <Tag label={t.isAlgemeen ? 'Iedereen' : `${t.ledenCount} leden`} />
               {t.ongelezen ? <Tag label="nieuw" tone="accent" /> : null}
             </View>
           </TouchableOpacity>
@@ -103,6 +104,7 @@ const styles = StyleSheet.create({
   },
   error: { fontFamily: fonts.body, color: colors.danger },
   card: { borderWidth: 1, borderColor: colors.divider, padding: 12, gap: 5 },
+  cardAlgemeen: { borderColor: colors.accent, borderWidth: 2 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
   cardTitel: { fontFamily: fonts.heading, fontSize: 16, textTransform: 'uppercase', color: colors.ink, flexShrink: 1 },
   cardTijd: { fontFamily: fonts.mono, fontSize: 10, color: colors.inkMuted },

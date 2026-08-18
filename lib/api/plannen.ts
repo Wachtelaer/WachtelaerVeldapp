@@ -14,7 +14,7 @@ export interface WerfPlannenSummary {
 
 export async function listWervenMetPlannen(profileId: string): Promise<WerfPlannenSummary[]> {
   const [{ data: werven, error: wErr }, { data: reads, error: rErr }] = await Promise.all([
-    supabase.from('werven').select('id, naam').order('naam'),
+    supabase.from('werven').select('id, naam').eq('is_algemeen', false).order('naam'),
     supabase.from('plan_reads').select('werf_id, last_read_at').eq('profile_id', profileId),
   ]);
   if (wErr) throw wErr;

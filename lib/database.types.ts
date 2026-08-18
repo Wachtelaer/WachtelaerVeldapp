@@ -19,6 +19,7 @@ export interface Werf {
   naam: string;
   adres: string;
   fase: string;
+  is_algemeen: boolean;
   created_at: string;
 }
 
