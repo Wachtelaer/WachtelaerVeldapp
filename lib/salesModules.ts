@@ -50,7 +50,7 @@ export const SALES_MODULES: SalesModule[] = [
     fotoTip: 'Foto per ruimte, plaats buitenunit, leidingtracé en condensafvoer.',
     velden: [
       { id: 'ruimtes', label: 'Aantal ruimtes', kind: 'getal', eenheid: 'ruimtes' },
-      { id: 'opp', label: 'Grootste ruimte', kind: 'getal', eenheid: 'm²' },
+      { id: 'opp', label: 'Oppervlakte per ruimte', kind: 'tekst', ph: 'bv. living 25m², slaapkamer 1 15m²', hintTekst: 'Eén oppervlakte per ruimte/binnenunit.' },
       { id: 'binnen', label: 'Type binnenunit', kind: 'chips', opties: ['Wandmodel', 'Cassette', 'Vloermodel', 'Kanaalunit'] },
       { id: 'buiten', label: 'Plaats buitenunit', kind: 'keuze', opties: ['Tuin', 'Plat dak', 'Muurbeugel', 'Nog te bekijken'] },
       { id: 'leiding', label: 'Leidinglengte per binnenunit', kind: 'tekst', ph: 'bv. living 8m, slaapkamer 1 12m', hintTekst: 'Eén lengte per ruimte/binnenunit.' },

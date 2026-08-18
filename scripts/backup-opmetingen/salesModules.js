@@ -25,7 +25,7 @@ const VELD_LABELS = {
   },
   airco: {
     ruimtes: { label: 'Aantal ruimtes', eenheid: 'ruimtes' },
-    opp: { label: 'Grootste ruimte', eenheid: 'm²' },
+    opp: { label: 'Oppervlakte per ruimte' },
     binnen: { label: 'Type binnenunit' },
     buiten: { label: 'Plaats buitenunit' },
     leiding: { label: 'Leidinglengte per binnenunit' },
