@@ -87,6 +87,31 @@ export function Stepper({
   );
 }
 
+/** A typed-in number, for values too large/precise to comfortably tap out with a Stepper. */
+export function NumberField({
+  value,
+  onChangeText,
+  eenheid,
+}: {
+  value: string;
+  onChangeText: (v: string) => void;
+  eenheid: string;
+}) {
+  return (
+    <View style={styles.numberFieldRow}>
+      <TextInput
+        value={value}
+        onChangeText={(v) => onChangeText(v.replace(/[^0-9.,]/g, ''))}
+        keyboardType="numeric"
+        placeholder="0"
+        placeholderTextColor={colors.inkFaint}
+        style={[styles.input, styles.numberFieldInput]}
+      />
+      <Text style={styles.eenheid}>{eenheid}</Text>
+    </View>
+  );
+}
+
 /** Wrapped pill buttons — single-select (like a radio group) or multi-select (like checkboxes). */
 export function ChipGroup({
   opties,
@@ -181,6 +206,8 @@ const styles = StyleSheet.create({
   },
   segmentedLabelActive: { color: colors.white },
   stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  numberFieldRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  numberFieldInput: { flex: 1 },
   stepper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.dividerStrong },
   stepperBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderRightColor: colors.dividerStrong },
   stepperBtnRight: { borderRightWidth: 0, borderLeftWidth: 1, borderLeftColor: colors.dividerStrong },

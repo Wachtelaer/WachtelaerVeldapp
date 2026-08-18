@@ -4,7 +4,7 @@
 // the backoffice quotes.
 
 export type ModuleKey = 'verwarming' | 'airco' | 'zon' | 'sanitair' | 'ventilatie';
-export type VeldKind = 'keuze' | 'num' | 'tekst' | 'chips';
+export type VeldKind = 'keuze' | 'num' | 'getal' | 'tekst' | 'chips';
 
 export interface SalesVeld {
   id: string;
@@ -32,14 +32,15 @@ export const SALES_MODULES: SalesModule[] = [
     sub: 'Ketel, warmtepomp, radiatoren, vloerverwarming',
     fotoTip: "Foto's van ketel + typeplaatje, schouw/afvoer, stookplaats en zekeringkast.",
     velden: [
-      { id: 'type', label: 'Gewenste oplossing', kind: 'keuze', opties: ['Condensatieketel gas', 'Warmtepomp lucht/water', 'Hybride', 'Nog te bepalen'] },
+      { id: 'type', label: 'Gewenste oplossing', kind: 'keuze', opties: ['Condensatieketel gas', 'Condensatieketel stookolie', 'Warmtepomp lucht/water', 'Hybride', 'Nog te bepalen'] },
       { id: 'huidig', label: 'Huidige installatie', kind: 'keuze', opties: ['Gas', 'Stookolie', 'Elektrisch', 'Geen'] },
-      { id: 'leeftijd', label: 'Leeftijd toestel', kind: 'num', eenheid: 'jaar', stap: 1 },
-      { id: 'opp', label: 'Te verwarmen oppervlakte', kind: 'num', eenheid: 'm²', stap: 10 },
+      { id: 'leeftijd', label: 'Leeftijd toestel', kind: 'getal', eenheid: 'jaar' },
+      { id: 'opp', label: 'Te verwarmen oppervlakte', kind: 'getal', eenheid: 'm²' },
       { id: 'afgifte', label: 'Afgifte aanwezig', kind: 'chips', opties: ['Radiatoren', 'Vloerverwarming', 'Convectoren', 'Nieuw te plaatsen'] },
       { id: 'ww', label: 'Warm water', kind: 'keuze', opties: ['Via ketel', 'Boiler 150L', 'Boiler 200L+', 'Apart toestel'] },
       { id: 'epc', label: 'Isolatie / EPC', kind: 'tekst', ph: 'EPC-label of bouwjaar + isolatie', hintTekst: 'Nodig voor de warmteverliesberekening in de backoffice.' },
-      { id: 'schouw', label: 'Afvoer / schouw', kind: 'keuze', opties: ['Bestaande schouw', 'Dakdoorvoer nodig', 'Muurdoorvoer', 'Onbekend'] },
+      { id: 'schouw', label: 'Afvoer / schouw', kind: 'keuze', opties: ['Bestaande schouw', 'Dakdoorvoer nodig', 'Muurdoorvoer', 'Tubering', 'Onbekend'] },
+      { id: 'schouwlengte', label: 'Lengte schouw', kind: 'getal', eenheid: 'm' },
     ],
   },
   {
@@ -48,11 +49,11 @@ export const SALES_MODULES: SalesModule[] = [
     sub: 'Split, multisplit, cassette',
     fotoTip: 'Foto per ruimte, plaats buitenunit, leidingtracé en condensafvoer.',
     velden: [
-      { id: 'ruimtes', label: 'Aantal ruimtes', kind: 'num', eenheid: 'ruimtes', stap: 1 },
-      { id: 'opp', label: 'Grootste ruimte', kind: 'num', eenheid: 'm²', stap: 5 },
+      { id: 'ruimtes', label: 'Aantal ruimtes', kind: 'getal', eenheid: 'ruimtes' },
+      { id: 'opp', label: 'Grootste ruimte', kind: 'getal', eenheid: 'm²' },
       { id: 'binnen', label: 'Type binnenunit', kind: 'chips', opties: ['Wandmodel', 'Cassette', 'Vloermodel', 'Kanaalunit'] },
       { id: 'buiten', label: 'Plaats buitenunit', kind: 'keuze', opties: ['Tuin', 'Plat dak', 'Muurbeugel', 'Nog te bekijken'] },
-      { id: 'leiding', label: 'Leidinglengte (langste)', kind: 'num', eenheid: 'm', stap: 1 },
+      { id: 'leiding', label: 'Leidinglengte per binnenunit', kind: 'tekst', ph: 'bv. living 8m, slaapkamer 1 12m', hintTekst: 'Eén lengte per ruimte/binnenunit.' },
       { id: 'voeding', label: 'Elektrische voeding', kind: 'keuze', opties: ['Vrije zekering', 'Nieuwe kring nodig', 'Onbekend'] },
       { id: 'condens', label: 'Condensafvoer', kind: 'keuze', opties: ['Naar afvoer', 'Pomp nodig', 'Naar buiten'] },
       { id: 'koelverwarm', label: 'Ook verwarmen?', kind: 'keuze', opties: ['Ja', 'Nee'] },
@@ -64,12 +65,12 @@ export const SALES_MODULES: SalesModule[] = [
     sub: 'Dak, omvormer, thuisbatterij',
     fotoTip: 'Dak van buiten (elke zijde), zolder/dakstructuur, zekeringkast en digitale meter.',
     velden: [
-      { id: 'dakopp', label: 'Beschikbaar dakoppervlak', kind: 'num', eenheid: 'm²', stap: 5 },
+      { id: 'dakopp', label: 'Beschikbaar dakoppervlak', kind: 'getal', eenheid: 'm²' },
       { id: 'orient', label: 'Oriëntatie', kind: 'chips', opties: ['Zuid', 'Oost', 'West', 'Noord', 'Plat dak'] },
-      { id: 'dakbed', label: 'Dakbedekking', kind: 'keuze', opties: ['Pannen', 'Leien', 'Roofing', 'Golfplaat'] },
-      { id: 'helling', label: 'Dakhelling', kind: 'num', eenheid: 'graden', stap: 5 },
-      { id: 'verbruik', label: 'Jaarverbruik', kind: 'num', eenheid: 'kWh', stap: 500 },
-      { id: 'batterij', label: 'Batterij gewenst', kind: 'keuze', opties: ['Nee', '5 kWh', '10 kWh', 'Advies vragen'] },
+      { id: 'dakbed', label: 'Dakbedekking', kind: 'keuze', opties: ['Pannen', 'Leien', 'Roofing', 'Golfplaat', 'EPDM'] },
+      { id: 'helling', label: 'Dakhelling', kind: 'getal', eenheid: 'graden' },
+      { id: 'verbruik', label: 'Jaarverbruik', kind: 'getal', eenheid: 'kWh' },
+      { id: 'batterij', label: 'Batterij gewenst', kind: 'keuze', opties: ['Nee', '7 kWh', '14 kWh', '21 kWh', 'Advies vragen'] },
       { id: 'meter', label: 'Digitale meter', kind: 'keuze', opties: ['Ja', 'Nee', 'Onbekend'] },
       { id: 'ean', label: 'EAN-nummer', kind: 'tekst', ph: '54144…', hintTekst: 'Overnemen van de meterkast — anders kan de aanvraag bij Fluvius niet mee.' },
       { id: 'steiger', label: 'Steiger of hoogtewerker', kind: 'keuze', opties: ['Nodig', 'Niet nodig', 'Te bekijken'] },
@@ -97,8 +98,8 @@ export const SALES_MODULES: SalesModule[] = [
     fotoTip: 'Plaats van de unit, valse plafonds of technische schacht, doorvoeren dak of muur.',
     velden: [
       { id: 'systeem', label: 'Systeem', kind: 'keuze', opties: ['C+ (vraaggestuurd)', 'D met WTW', 'Advies vragen'] },
-      { id: 'ruimtes', label: 'Aantal ruimtes aan te sluiten', kind: 'num', eenheid: 'ruimtes', stap: 1 },
-      { id: 'opp', label: 'Bewoonbare oppervlakte', kind: 'num', eenheid: 'm²', stap: 10 },
+      { id: 'ruimtes', label: 'Aantal ruimtes aan te sluiten', kind: 'getal', eenheid: 'ruimtes' },
+      { id: 'opp', label: 'Bewoonbare oppervlakte', kind: 'getal', eenheid: 'm²' },
       { id: 'unit', label: 'Plaats unit', kind: 'keuze', opties: ['Zolder', 'Technische ruimte', 'Berging', 'Te bepalen'] },
       { id: 'kanalen', label: 'Kanalen', kind: 'keuze', opties: ['Valse plafonds', 'Zichtbaar', 'In vloer', 'Mix'] },
       { id: 'bouw', label: 'Situatie', kind: 'keuze', opties: ['Nieuwbouw', 'Renovatie', 'Bewoond huis'] },
@@ -129,7 +130,7 @@ export function summarizeAntwoorden(mod: SalesModule, antwoorden: Record<string,
     if (parts.length >= 2) break;
     const w = antwoorden[v.id];
     if (v.kind === 'chips' && Array.isArray(w) && w.length) parts.push(w.join(', '));
-    else if (v.kind === 'num' && w) parts.push(`${w} ${v.eenheid ?? ''}`.trim());
+    else if ((v.kind === 'num' || v.kind === 'getal') && w) parts.push(`${w} ${v.eenheid ?? ''}`.trim());
     else if ((v.kind === 'keuze' || v.kind === 'tekst') && w) parts.push(String(w));
   }
   return parts.length ? parts.join(' · ') : mod.sub;
