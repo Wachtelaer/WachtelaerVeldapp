@@ -8,7 +8,11 @@ interface AuthState {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  /** True right after following an invite or password-reset link — the
+   *  session exists but the person hasn't chosen a password yet. */
+  needsPasswordSetup: boolean;
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
+  completePasswordSetup: () => void;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -19,6 +23,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
 
   const loadProfile = async (userId: string) => {
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
@@ -32,8 +37,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       else setLoading(false);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+    // Supabase fires PASSWORD_RECOVERY for both password-reset links and
+    // invite links — both need the person to choose a password before
+    // they can use the app.
+    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
       setSession(next);
+      if (event === 'PASSWORD_RECOVERY') setNeedsPasswordSetup(true);
       if (next) loadProfile(next.user.id);
       else setProfile(null);
     });
@@ -46,10 +55,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       session,
       profile,
       loading,
+      needsPasswordSetup,
       signInWithPassword: async (email, password) => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         return { error: error?.message ?? null };
       },
+      completePasswordSetup: () => setNeedsPasswordSetup(false),
       signOut: async () => {
         await supabase.auth.signOut();
       },
@@ -57,7 +68,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (session) await loadProfile(session.user.id);
       },
     }),
-    [session, profile, loading]
+    [session, profile, loading, needsPasswordSetup]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -53,7 +53,7 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { session, loading } = useAuth();
+  const { session, loading, needsPasswordSetup } = useAuth();
 
   if (loading) {
     return (
@@ -68,7 +68,10 @@ function RootNavigator() {
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" />
       </Stack.Protected>
-      <Stack.Protected guard={!!session}>
+      <Stack.Protected guard={!!session && needsPasswordSetup}>
+        <Stack.Screen name="nieuw-wachtwoord" />
+      </Stack.Protected>
+      <Stack.Protected guard={!!session && !needsPasswordSetup}>
         <Stack.Screen name="(tabs)" />
       </Stack.Protected>
     </Stack>
