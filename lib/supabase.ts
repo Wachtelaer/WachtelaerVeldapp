@@ -12,6 +12,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
+// Checked synchronously, before Supabase's own async URL-session handling
+// (triggered by detectSessionInUrl below) gets a chance to run. That
+// handling can resolve — and fire its one-shot PASSWORD_RECOVERY event —
+// before AuthProvider's useEffect has subscribed to onAuthStateChange, so
+// relying on the event alone silently drops invite/reset-password links
+// on a fast page load (the person lands straight in the app, having
+// never set a password). This flag is the reliable source of truth;
+// the event listener in AuthProvider is just a backup.
+export const isPasswordSetupLink =
+  Platform.OS === 'web' && typeof window !== 'undefined' && /type=(invite|recovery)/.test(window.location.hash);
+
 // No generic Database type here: this hand-maintained schema doesn't include
 // full relationship metadata, and supabase-js's typed embedded-resource
 // selects (e.g. `profiles(full_name)`) need that to type-check. The api/

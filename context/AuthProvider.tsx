@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import type { Session } from '@supabase/supabase-js';
 
-import { supabase } from '@/lib/supabase';
+import { supabase, isPasswordSetupLink } from '@/lib/supabase';
 import type { Profile } from '@/lib/database.types';
 
 interface AuthState {
@@ -23,7 +23,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
+  const [needsPasswordSetup, setNeedsPasswordSetup] = useState(isPasswordSetupLink);
 
   const loadProfile = async (userId: string) => {
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
