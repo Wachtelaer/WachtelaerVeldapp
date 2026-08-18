@@ -25,7 +25,7 @@ const VELD_LABELS = {
   },
   airco: {
     ruimtes: { label: 'Aantal ruimtes', eenheid: 'ruimtes' },
-    opp: { label: 'Oppervlakte per ruimte' },
+    opp: { label: 'Oppervlakte per ruimte', eenheid: 'm²' },
     binnen: { label: 'Type binnenunit' },
     buiten: { label: 'Plaats buitenunit' },
     leiding: { label: 'Leidinglengte per binnenunit' },
@@ -76,7 +76,10 @@ function formatAntwoorden(moduleKey, antwoorden) {
       const raw = antwoorden ? antwoorden[id] : undefined;
       if (raw === undefined || raw === null || raw === '') return null;
       const waarde = Array.isArray(raw)
-        ? raw.join(', ')
+        ? raw
+            .filter(Boolean)
+            .map((x) => (meta.eenheid ? `${x} ${meta.eenheid}` : String(x)))
+            .join(', ')
         : meta.eenheid
           ? `${raw} ${meta.eenheid}`
           : String(raw);

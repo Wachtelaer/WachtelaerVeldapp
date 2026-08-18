@@ -5,7 +5,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { BackRow, SectionLabel } from '@/components/ui/Basics';
 import { Button } from '@/components/ui/Button';
-import { ChipGroup, FieldLabel, NumberField, Stepper, TextArea, TextField } from '@/components/ui/Form';
+import { ChipGroup, FieldLabel, NumberField, NumberFieldList, Stepper, TextArea, TextField } from '@/components/ui/Form';
 import { PhotoPicker } from '@/components/PhotoPicker';
 import { useAuth } from '@/context/AuthProvider';
 import { createOpmeting } from '@/lib/api/opmetingen';
@@ -103,6 +103,15 @@ export default function IntakeScreen() {
                 value={(antwoorden[v.id] as string) || ''}
                 onChangeText={(val) => setVeld(v.id, val)}
                 eenheid={v.eenheid ?? ''}
+              />
+            ) : null}
+            {v.kind === 'lijst' ? (
+              <NumberFieldList
+                count={Math.max(0, Math.floor(Number(antwoorden[v.telVeldId ?? '']) || 0))}
+                values={(antwoorden[v.id] as string[]) || []}
+                onChange={(vals) => setVeld(v.id, vals)}
+                eenheid={v.eenheid ?? ''}
+                itemLabel={(i) => `Ruimte ${i + 1}`}
               />
             ) : null}
             {v.kind === 'tekst' ? (

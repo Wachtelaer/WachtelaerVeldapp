@@ -112,6 +112,44 @@ export function NumberField({
   );
 }
 
+/** One NumberField per item — e.g. an oppervlakte input per room, count
+ *  driven by another field's value ("aantal ruimtes"). */
+export function NumberFieldList({
+  count,
+  values,
+  onChange,
+  eenheid,
+  itemLabel,
+}: {
+  count: number;
+  values: string[];
+  onChange: (values: string[]) => void;
+  eenheid: string;
+  itemLabel: (index: number) => string;
+}) {
+  if (count <= 0) {
+    return <Text style={styles.numberFieldListHint}>Vul eerst het aantal in.</Text>;
+  }
+  return (
+    <View style={{ gap: 8 }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <View key={i} style={styles.numberFieldListRow}>
+          <Text style={styles.numberFieldListLabel}>{itemLabel(i)}</Text>
+          <NumberField
+            value={values[i] ?? ''}
+            onChangeText={(v) => {
+              const next = [...values];
+              next[i] = v;
+              onChange(next);
+            }}
+            eenheid={eenheid}
+          />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 /** Wrapped pill buttons — single-select (like a radio group) or multi-select (like checkboxes). */
 export function ChipGroup({
   opties,
@@ -208,6 +246,9 @@ const styles = StyleSheet.create({
   stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   numberFieldRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   numberFieldInput: { flex: 1 },
+  numberFieldListHint: { fontFamily: fonts.body, fontSize: 13, color: colors.inkMuted, fontStyle: 'italic' },
+  numberFieldListRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  numberFieldListLabel: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkMuted, width: 76 },
   stepper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.dividerStrong },
   stepperBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderRightColor: colors.dividerStrong },
   stepperBtnRight: { borderRightWidth: 0, borderLeftWidth: 1, borderLeftColor: colors.dividerStrong },

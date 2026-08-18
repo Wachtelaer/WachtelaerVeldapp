@@ -4,7 +4,7 @@
 // the backoffice quotes.
 
 export type ModuleKey = 'verwarming' | 'airco' | 'zon' | 'sanitair' | 'ventilatie';
-export type VeldKind = 'keuze' | 'num' | 'getal' | 'tekst' | 'chips';
+export type VeldKind = 'keuze' | 'num' | 'getal' | 'tekst' | 'chips' | 'lijst';
 
 export interface SalesVeld {
   id: string;
@@ -15,6 +15,9 @@ export interface SalesVeld {
   stap?: number;
   ph?: string;
   hintTekst?: string;
+  /** For kind 'lijst': id of the field whose numeric value decides how
+   *  many inputs to render (e.g. one per room, driven by "aantal ruimtes"). */
+  telVeldId?: string;
 }
 
 export interface SalesModule {
@@ -50,7 +53,7 @@ export const SALES_MODULES: SalesModule[] = [
     fotoTip: 'Foto per ruimte, plaats buitenunit, leidingtracé en condensafvoer.',
     velden: [
       { id: 'ruimtes', label: 'Aantal ruimtes', kind: 'getal', eenheid: 'ruimtes' },
-      { id: 'opp', label: 'Oppervlakte per ruimte', kind: 'tekst', ph: 'bv. living 25m², slaapkamer 1 15m²', hintTekst: 'Eén oppervlakte per ruimte/binnenunit.' },
+      { id: 'opp', label: 'Oppervlakte per ruimte', kind: 'lijst', telVeldId: 'ruimtes', eenheid: 'm²' },
       { id: 'binnen', label: 'Type binnenunit', kind: 'chips', opties: ['Wandmodel', 'Cassette', 'Vloermodel', 'Kanaalunit'] },
       { id: 'buiten', label: 'Plaats buitenunit', kind: 'keuze', opties: ['Tuin', 'Plat dak', 'Muurbeugel', 'Nog te bekijken'] },
       { id: 'leiding', label: 'Leidinglengte per binnenunit', kind: 'tekst', ph: 'bv. living 8m, slaapkamer 1 12m', hintTekst: 'Eén lengte per ruimte/binnenunit.' },
@@ -118,6 +121,12 @@ export function missingVelden(mod: SalesModule, antwoorden: Record<string, unkno
     .filter((v) => {
       const w = antwoorden[v.id];
       if (v.kind === 'chips') return !(Array.isArray(w) && w.length);
+      if (v.kind === 'lijst') {
+        const aantal = Math.max(0, Math.floor(Number(antwoorden[v.telVeldId ?? '']) || 0));
+        if (aantal === 0) return false; // nothing to fill in until the count is set
+        const arr = Array.isArray(w) ? (w as string[]) : [];
+        return arr.length < aantal || arr.slice(0, aantal).some((x) => !x);
+      }
       return !w;
     })
     .map((v) => v.label.toLowerCase());
@@ -130,7 +139,9 @@ export function summarizeAntwoorden(mod: SalesModule, antwoorden: Record<string,
     if (parts.length >= 2) break;
     const w = antwoorden[v.id];
     if (v.kind === 'chips' && Array.isArray(w) && w.length) parts.push(w.join(', '));
-    else if ((v.kind === 'num' || v.kind === 'getal') && w) parts.push(`${w} ${v.eenheid ?? ''}`.trim());
+    else if (v.kind === 'lijst' && Array.isArray(w) && w.length) {
+      parts.push(`${w.filter(Boolean).join(', ')} ${v.eenheid ?? ''}`.trim());
+    } else if ((v.kind === 'num' || v.kind === 'getal') && w) parts.push(`${w} ${v.eenheid ?? ''}`.trim());
     else if ((v.kind === 'keuze' || v.kind === 'tekst') && w) parts.push(String(w));
   }
   return parts.length ? parts.join(' · ') : mod.sub;
