@@ -13,7 +13,21 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const ROLES = ['tech', 'werfleider', 'sales', 'mgmt'];
 
+// The app calls this from a browser, which sends a CORS preflight
+// (OPTIONS) before the real request because it carries an Authorization
+// header. Without a response to that preflight, the browser blocks the
+// call before it ever reaches this function.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   if (req.method !== 'POST') {
     return json({ error: 'Method not allowed' }, 405);
   }
@@ -72,5 +86,8 @@ Deno.serve(async (req) => {
 });
 
 function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
 }
