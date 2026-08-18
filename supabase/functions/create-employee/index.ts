@@ -13,6 +13,19 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const ROLES = ['tech', 'werfleider', 'sales', 'mgmt'];
 
+// Supabase's Authentication → URL Configuration → Site URL is meant to
+// control where invite links land, but a connected Vercel integration
+// keeps overwriting it with the wrong (team-scoped, Vercel-protected)
+// domain — so instead of trusting that setting, the redirect is pinned
+// explicitly here. Override with a PUBLIC_SITE_URL secret
+// (`supabase secrets set PUBLIC_SITE_URL=...`) if the production domain
+// ever changes, instead of relying on the dashboard setting.
+// Trailing slash matters: Supabase checks this against the Redirect
+// URLs allowlist and silently falls back to Site URL (the wrong,
+// Vercel-managed domain) if it doesn't match — which is exactly what
+// happened without the slash, even with the matching entry present.
+const SITE_URL = Deno.env.get('PUBLIC_SITE_URL') ?? 'https://wachtelaer-veldapp.vercel.app/';
+
 // The app calls this from a browser, which sends a CORS preflight
 // (OPTIONS) before the real request because it carries an Authorization
 // header. Without a response to that preflight, the browser blocks the
@@ -76,6 +89,7 @@ Deno.serve(async (req) => {
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
   const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
     data: { full_name, role },
+    redirectTo: SITE_URL,
   });
 
   if (error) {
