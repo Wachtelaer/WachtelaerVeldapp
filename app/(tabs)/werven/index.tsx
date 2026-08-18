@@ -16,13 +16,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/AppHeader';
 import { KpiTile, SectionLabel, Tag } from '@/components/ui/Basics';
 import { Button } from '@/components/ui/Button';
-import { FieldLabel, TextField } from '@/components/ui/Form';
+import { ChipGroup, FieldLabel, TextField } from '@/components/ui/Form';
 import { useAuth } from '@/context/AuthProvider';
 import { createWerf, deleteWerf, listWervenWithSummary, type WerfListItem } from '@/lib/api/werven';
 import { listMyOpmetingen, type OpmetingListItem } from '@/lib/api/opmetingen';
 import { getModule, summarizeAntwoorden } from '@/lib/salesModules';
 import { colors, fonts, roleLabels } from '@/lib/theme';
-
+const FASE_OPTIES = ['offerte', 'opstart', 'bezig', 'afwerking'];
 export default function WervenHomeScreen() {
   const { profile } = useAuth();
   const [werven, setWerven] = useState<WerfListItem[] | null>(null);
@@ -263,7 +263,7 @@ export default function WervenHomeScreen() {
             <TextField value={newAdres} onChangeText={setNewAdres} placeholder="Straat, nummer, gemeente" />
 
             <FieldLabel>Fase</FieldLabel>
-            <TextField value={newFase} onChangeText={setNewFase} placeholder="bv. opstart, ruwbouw, afwerking" />
+            <ChipGroup opties={FASE_OPTIES} value={newFase} onChange={(v) => setNewFase(v as string)} />
 
             {addError ? <Text style={styles.error}>{addError}</Text> : null}
 
