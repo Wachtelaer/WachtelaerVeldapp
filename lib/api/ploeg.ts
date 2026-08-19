@@ -35,11 +35,6 @@ export async function updateRol(profileId: string, role: Role): Promise<void> {
   if (error) throw error;
 }
 
-export async function updateMagazijnier(profileId: string, isMagazijnier: boolean): Promise<void> {
-  const { error } = await supabase.from('profiles').update({ is_magazijnier: isMagazijnier }).eq('id', profileId);
-  if (error) throw error;
-}
-
 export async function updateSaldo(profileId: string, verlofDagen: number, inhaalrustDagen: number): Promise<void> {
   const { error } = await supabase
     .from('profiles')

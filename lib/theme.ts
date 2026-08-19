@@ -50,4 +50,5 @@ export const roleLabels: Record<string, string> = {
   werfleider: 'Werfleiding',
   sales: 'Verkoop',
   mgmt: 'Management',
+  magazijnier: 'Magazijnier',
 };

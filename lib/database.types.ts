@@ -1,7 +1,7 @@
 // Hand-written to match supabase/migrations/0001_werfrapporten.sql.
 // Regenerate with `supabase gen types typescript` once the schema grows.
 
-export type Role = 'tech' | 'werfleider' | 'sales' | 'mgmt';
+export type Role = 'tech' | 'werfleider' | 'sales' | 'mgmt' | 'magazijnier';
 export type Weer = 'Droog' | 'Regen' | 'Hitte';
 
 export interface Profile {
@@ -10,7 +10,6 @@ export interface Profile {
   role: Role;
   verlof_dagen: number;
   inhaalrust_dagen: number;
-  is_magazijnier: boolean;
   created_at: string;
 }
 

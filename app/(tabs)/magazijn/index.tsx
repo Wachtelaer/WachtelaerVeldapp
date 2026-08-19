@@ -33,7 +33,7 @@ const LEGE_REGEL: MeldingRegel = { tekst: '', hoeveelheid: '' };
 
 export default function MagazijnScreen() {
   const { profile } = useAuth();
-  const canOverzien = profile?.role === 'mgmt' || !!profile?.is_magazijnier;
+  const canOverzien = profile?.role === 'mgmt' || profile?.role === 'magazijnier';
 
   return (
     <View style={styles.root}>
