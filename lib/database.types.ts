@@ -136,6 +136,26 @@ export interface PlanRead {
   last_read_at: string;
 }
 
+export interface MagazijnMelding {
+  id: string;
+  melder_id: string;
+  werf_id: string | null;
+  tekst: string;
+  hoeveelheid: number | null;
+  eenheid: string;
+  verwerkt: boolean;
+  verwerkt_door: string | null;
+  verwerkt_op: string | null;
+  created_at: string;
+}
+
+export interface MagazijnMeldingFoto {
+  id: string;
+  melding_id: string;
+  storage_path: string;
+  created_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -189,6 +209,16 @@ export interface Database {
         Update: Partial<PlanVersie>;
       };
       plan_reads: { Row: PlanRead; Insert: PlanRead; Update: Partial<PlanRead> };
+      magazijn_meldingen: {
+        Row: MagazijnMelding;
+        Insert: Partial<MagazijnMelding> & Pick<MagazijnMelding, 'melder_id'>;
+        Update: Partial<MagazijnMelding>;
+      };
+      magazijn_meldingen_fotos: {
+        Row: MagazijnMeldingFoto;
+        Insert: Partial<MagazijnMeldingFoto> & Pick<MagazijnMeldingFoto, 'melding_id' | 'storage_path'>;
+        Update: Partial<MagazijnMeldingFoto>;
+      };
     };
   };
 }
