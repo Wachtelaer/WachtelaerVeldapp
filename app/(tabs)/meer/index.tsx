@@ -42,16 +42,6 @@ export default function MeerTab() {
           <Ionicons name="chevron-forward" size={16} color={colors.accent} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.card} onPress={() => router.push('/meer/magazijn')} accessibilityRole="button">
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>Magazijn</Text>
-            <Text style={styles.cardBody}>
-              {isMgmt ? 'Meldingen van wat er is meegenomen.' : 'Geef door wat je hebt meegenomen.'}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color={colors.accent} />
-        </TouchableOpacity>
-
         {isMgmt ? (
           <TouchableOpacity style={styles.card} onPress={() => router.push('/meer/ploeg')} accessibilityRole="button">
             <View style={{ flex: 1 }}>

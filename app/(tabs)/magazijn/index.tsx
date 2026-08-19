@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { router, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
-import { BackRow, KpiTile, SectionLabel, Tag } from '@/components/ui/Basics';
+import { KpiTile, SectionLabel, Tag } from '@/components/ui/Basics';
 import { Button } from '@/components/ui/Button';
 import { ChipGroup, FieldLabel, TextArea, TextField } from '@/components/ui/Form';
 import { PhotoPicker } from '@/components/PhotoPicker';
@@ -25,13 +25,12 @@ const GEEN_WERF = 'Geen specifieke werf';
 
 export default function MagazijnScreen() {
   const { profile } = useAuth();
-  const isMgmt = profile?.role === 'mgmt';
+  const canOverzien = profile?.role === 'mgmt' || !!profile?.is_magazijnier;
 
   return (
     <View style={styles.root}>
-      <AppHeader kicker={isMgmt ? 'Magazijn · meldingen' : 'Magazijn'} />
-      <BackRow label="Meer" onPress={() => router.replace('/meer')} />
-      {isMgmt ? <OverzichtView /> : <MeldingView />}
+      <AppHeader kicker={canOverzien ? 'Magazijn · meldingen' : 'Magazijn'} />
+      {canOverzien ? <OverzichtView /> : <MeldingView />}
     </View>
   );
 }

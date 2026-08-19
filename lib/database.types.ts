@@ -10,6 +10,7 @@ export interface Profile {
   role: Role;
   verlof_dagen: number;
   inhaalrust_dagen: number;
+  is_magazijnier: boolean;
   created_at: string;
 }
 

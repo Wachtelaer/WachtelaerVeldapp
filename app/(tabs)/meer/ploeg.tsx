@@ -14,7 +14,7 @@ import {
 
 import { AppHeader } from '@/components/AppHeader';
 import { BackRow } from '@/components/ui/Basics';
-import { ChipGroup, FieldLabel, TextField } from '@/components/ui/Form';
+import { ChipGroup, FieldLabel, TextField, ToggleRow } from '@/components/ui/Form';
 import { useAuth } from '@/context/AuthProvider';
 import { listAlleWerven } from '@/lib/api/werven';
 import {
@@ -22,6 +22,7 @@ import {
   listProfielen,
   setWerfLeider,
   setWerfLid,
+  updateMagazijnier,
   updateRol,
   updateSaldo,
   type ProfielMetWerven,
@@ -83,6 +84,18 @@ export default function PloegScreen() {
       await load();
     } catch (e: any) {
       setError(e.message ?? 'Kon rol niet aanpassen');
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const toggleMagazijnier = async (p: ProfielMetWerven) => {
+    setSavingId(p.id);
+    try {
+      await updateMagazijnier(p.id, !p.is_magazijnier);
+      await load();
+    } catch (e: any) {
+      setError(e.message ?? 'Kon magazijnier-recht niet aanpassen');
     } finally {
       setSavingId(null);
     }
@@ -187,6 +200,7 @@ export default function PloegScreen() {
                   <Text style={styles.naam}>{p.full_name}</Text>
                   <Text style={styles.meta}>
                     {roleLabels[p.role]}
+                    {p.is_magazijnier ? ' · magazijnier' : ''}
                     {werfSamenvatting ? ` · ${werfSamenvatting}` : ''}
                   </Text>
                 </View>
@@ -208,6 +222,13 @@ export default function PloegScreen() {
                       }}
                     />
                   )}
+
+                  <ToggleRow
+                    checked={p.is_magazijnier}
+                    onToggle={() => toggleMagazijnier(p)}
+                    titel="Magazijnier"
+                    sub="Ziet alle magazijn-meldingen en kan ze als verwerkt afvinken"
+                  />
 
                   <FieldLabel>Saldo</FieldLabel>
                   <View style={styles.saldoRow}>
