@@ -2,10 +2,14 @@
 -- the role enum. A magazijnier keeps their normal role (tech, werfleider,
 -- ...) but additionally gets to see and process every Magazijn-melding,
 -- same as management already does.
+--
+-- Written to be safe to run more than once (if-exists guards on every
+-- statement), in case an earlier attempt at this migration only partially
+-- applied.
 
-alter table profiles add column is_magazijnier boolean not null default false;
+alter table profiles add column if not exists is_magazijnier boolean not null default false;
 
-create function private.is_magazijnier(uid uuid)
+create or replace function private.is_magazijnier(uid uuid)
 returns boolean
 language sql
 stable
@@ -15,14 +19,16 @@ as $$
   select exists (select 1 from profiles where id = uid and is_magazijnier);
 $$;
 
-drop policy "magazijn_meldingen are readable by their melder and management" on magazijn_meldingen;
+drop policy if exists "magazijn_meldingen are readable by their melder and management" on magazijn_meldingen;
+drop policy if exists "magazijn_meldingen are readable by their melder, management and magazijnier" on magazijn_meldingen;
 
 create policy "magazijn_meldingen are readable by their melder, management and magazijnier"
   on magazijn_meldingen for select
   to authenticated
   using (melder_id = auth.uid() or private.is_mgmt(auth.uid()) or private.is_magazijnier(auth.uid()));
 
-drop policy "magazijn_meldingen are updated by management only" on magazijn_meldingen;
+drop policy if exists "magazijn_meldingen are updated by management only" on magazijn_meldingen;
+drop policy if exists "magazijn_meldingen are updated by management or magazijnier" on magazijn_meldingen;
 
 create policy "magazijn_meldingen are updated by management or magazijnier"
   on magazijn_meldingen for update
@@ -30,7 +36,7 @@ create policy "magazijn_meldingen are updated by management or magazijnier"
   using (private.is_mgmt(auth.uid()) or private.is_magazijnier(auth.uid()))
   with check (private.is_mgmt(auth.uid()) or private.is_magazijnier(auth.uid()));
 
-drop policy "magazijn_meldingen_fotos follow the melding's visibility" on magazijn_meldingen_fotos;
+drop policy if exists "magazijn_meldingen_fotos follow the melding's visibility" on magazijn_meldingen_fotos;
 
 create policy "magazijn_meldingen_fotos follow the melding's visibility"
   on magazijn_meldingen_fotos for select
@@ -43,7 +49,7 @@ create policy "magazijn_meldingen_fotos follow the melding's visibility"
     )
   );
 
-drop policy "magazijn photos are readable per melding visibility" on storage.objects;
+drop policy if exists "magazijn photos are readable per melding visibility" on storage.objects;
 
 create policy "magazijn photos are readable per melding visibility"
   on storage.objects for select

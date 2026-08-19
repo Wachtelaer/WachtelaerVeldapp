@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { AppHeader } from '@/components/AppHeader';
 import { KpiTile, SectionLabel, Tag } from '@/components/ui/Basics';
 import { Button } from '@/components/ui/Button';
-import { ChipGroup, FieldLabel, TextArea, TextField } from '@/components/ui/Form';
+import { ChipGroup, FieldLabel, TextField } from '@/components/ui/Form';
 import { PhotoPicker } from '@/components/PhotoPicker';
 import { useAuth } from '@/context/AuthProvider';
 import { listAlleWerven } from '@/lib/api/werven';
@@ -22,6 +23,13 @@ import { enqueueMagazijnMelding, useConnectivity } from '@/lib/offlineQueue';
 import { colors, fonts } from '@/lib/theme';
 
 const GEEN_WERF = 'Geen specifieke werf';
+
+interface MeldingRegel {
+  tekst: string;
+  hoeveelheid: string;
+}
+
+const LEGE_REGEL: MeldingRegel = { tekst: '', hoeveelheid: '' };
 
 export default function MagazijnScreen() {
   const { profile } = useAuth();
@@ -126,9 +134,7 @@ function MeldingView() {
   const { profile } = useAuth();
   const { isOnline } = useConnectivity();
   const [alleWerven, setAlleWerven] = useState<{ id: string; naam: string }[]>([]);
-  const [tekst, setTekst] = useState('');
-  const [hoeveelheid, setHoeveelheid] = useState('');
-  const [eenheid, setEenheid] = useState('');
+  const [regels, setRegels] = useState<MeldingRegel[]>([{ ...LEGE_REGEL }]);
   const [werfNaam, setWerfNaam] = useState(GEEN_WERF);
   const [fotoUris, setFotoUris] = useState<string[]>([]);
   const [mijnMeldingen, setMijnMeldingen] = useState<MeldingListItem[] | null>(null);
@@ -155,25 +161,43 @@ function MeldingView() {
     }, [load])
   );
 
+  const gevuldeRegels = regels.filter((r) => r.tekst.trim());
+
+  const updateRegel = (index: number, veld: keyof MeldingRegel, waarde: string) => {
+    setRegels((prev) => {
+      const next = prev.map((r, i) => (i === index ? { ...r, [veld]: waarde } : r));
+      if (next[next.length - 1].tekst.trim()) next.push({ ...LEGE_REGEL });
+      return next;
+    });
+  };
+
+  const removeRegel = (index: number) => {
+    setRegels((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length ? next : [{ ...LEGE_REGEL }];
+    });
+  };
+
   const submit = async () => {
-    if (!profile || !tekst.trim()) return;
+    if (!profile || gevuldeRegels.length === 0) return;
     setSubmitting(true);
     setError(null);
     const werf = alleWerven.find((w) => w.naam === werfNaam);
+    const tekst = gevuldeRegels
+      .map((r) => (r.hoeveelheid.trim() ? `${r.hoeveelheid.trim()}× ${r.tekst.trim()}` : r.tekst.trim()))
+      .join('\n');
     const payload = {
       melderId: profile.id,
       werfId: werf?.id ?? null,
-      tekst: tekst.trim(),
-      hoeveelheid: hoeveelheid.trim() ? Number(hoeveelheid.replace(',', '.')) : null,
-      eenheid: eenheid.trim(),
+      tekst,
+      hoeveelheid: null,
+      eenheid: '',
       fotoUris,
     };
     try {
       if (isOnline) await createMelding(payload);
       else await enqueueMagazijnMelding(payload);
-      setTekst('');
-      setHoeveelheid('');
-      setEenheid('');
+      setRegels([{ ...LEGE_REGEL }]);
       setWerfNaam(GEEN_WERF);
       setFotoUris([]);
       await load();
@@ -195,20 +219,23 @@ function MeldingView() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <View style={{ gap: 6 }}>
+      <View style={{ gap: 8 }}>
         <FieldLabel>Wat neem je mee</FieldLabel>
-        <TextArea value={tekst} onChangeText={setTekst} placeholder="Bv. 2 zakken cement, 10m koperbuis 18mm…" />
-      </View>
-
-      <View style={styles.row}>
-        <View style={{ flex: 1, gap: 6 }}>
-          <FieldLabel>Aantal (optioneel)</FieldLabel>
-          <TextField value={hoeveelheid} onChangeText={setHoeveelheid} placeholder="0" keyboardType="numeric" />
-        </View>
-        <View style={{ flex: 1, gap: 6 }}>
-          <FieldLabel>Eenheid</FieldLabel>
-          <TextField value={eenheid} onChangeText={setEenheid} placeholder="st., zakken, m…" />
-        </View>
+        {regels.map((regel, i) => (
+          <View key={i} style={styles.regelRow}>
+            <View style={styles.regelTekst}>
+              <TextField value={regel.tekst} onChangeText={(v) => updateRegel(i, 'tekst', v)} placeholder="Bv. zakken cement" />
+            </View>
+            <View style={styles.regelHoeveelheid}>
+              <TextField value={regel.hoeveelheid} onChangeText={(v) => updateRegel(i, 'hoeveelheid', v)} placeholder="aantal" />
+            </View>
+            {regels.length > 1 ? (
+              <TouchableOpacity onPress={() => removeRegel(i)} accessibilityRole="button" style={styles.regelRemove}>
+                <Ionicons name="close" size={16} color={colors.inkMuted} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ))}
       </View>
 
       {alleWerven.length > 0 ? (
@@ -231,7 +258,7 @@ function MeldingView() {
         label={isOnline ? 'Melding versturen' : 'Opslaan in wachtrij'}
         onPress={submit}
         loading={submitting}
-        disabled={!tekst.trim()}
+        disabled={gevuldeRegels.length === 0}
       />
 
       <View>
@@ -305,6 +332,10 @@ const styles = StyleSheet.create({
   },
   kpiRow: { flexDirection: 'row', gap: 1, backgroundColor: colors.divider, borderWidth: 1, borderColor: colors.divider },
   row: { flexDirection: 'row', gap: 10 },
+  regelRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  regelTekst: { flex: 2 },
+  regelHoeveelheid: { flex: 1 },
+  regelRemove: { width: 32, height: 44, alignItems: 'center', justifyContent: 'center' },
   card: { borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.white, padding: 12, gap: 9 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
   cardTitel: { fontFamily: fonts.heading, fontSize: 16, textTransform: 'uppercase', color: colors.ink },
