@@ -18,11 +18,11 @@ const VELD_LABELS = {
     buiten_serienummer: { label: 'Buitenunit — serienummer' },
     buiten_koelmiddel: { label: 'Buitenunit — koelmiddel' },
     buiten_hoeveelheid: { label: 'Buitenunit — hoeveelheid koelmiddel', eenheid: 'kg' },
-    druk: { label: 'Gemeten druk', eenheid: 'bar' },
-    filters: { label: 'Filters' },
+    lekcontrole: { label: 'Controle op lekkage' },
     buitenunit: { label: 'Buitenunit gereinigd' },
     binnenunits: { label: 'Binnenunits (locatie/type)' },
     binnenunit: { label: 'Binnenunits gereinigd' },
+    filters: { label: 'Filters' },
     afvoer: { label: 'Afvoer gecontroleerd' },
     elektrisch: { label: 'Elektrische aansluitingen gecontroleerd' },
     werking: { label: 'Werking getest' },
@@ -34,7 +34,6 @@ const VELD_LABELS = {
     filters: { label: 'Filters' },
     ventilatoren: { label: 'Ventilatoren gecontroleerd' },
     kanalen: { label: 'Kanalen gereinigd' },
-    debiet: { label: 'Debiet gemeten', eenheid: 'm³/h' },
     geluid: { label: 'Abnormaal geluid' },
     gebreken: { label: 'Vastgestelde gebreken' },
     volgend_onderhoud: { label: 'Volgend onderhoud' },
@@ -58,16 +57,22 @@ const VELD_LABELS = {
     manometer: { label: 'Gebruikte manometer' },
   },
   opstart_airco: {
-    merk_model: { label: 'Merk/model binnen- en buitenunit' },
-    serienummers: { label: 'Serienummers' },
-    koelmiddel: { label: 'Koelmiddel' },
-    fabrieksvulling: { label: 'Fabrieksvulling', eenheid: 'kg' },
-    bijgevuld: { label: 'Bijgevulde hoeveelheid', eenheid: 'kg' },
-    elektrisch: { label: 'Elektrische voeding gecontroleerd' },
-    vacuum: { label: 'Vacuümtest uitgevoerd' },
-    werkdruk: { label: 'Werkdruk gemeten', eenheid: 'bar' },
-    werking: { label: 'Werking getest' },
-    uitleg: { label: 'Uitleg gegeven aan klant' },
+    outdoor_merk: { label: 'Outdoor — merk' },
+    outdoor_model: { label: 'Outdoor — model' },
+    outdoor_serienummer: { label: 'Outdoor — serienummer' },
+    indoor_units: {
+      label: 'Indoor-units',
+      subLabels: { merk: 'Merk', model: 'Model', serienummer: 'Serienummer', locatie: 'Locatie' },
+    },
+    testdruk_systeem: { label: 'Testdruk systeem', eenheid: 'bar' },
+    duur_vacuum: { label: 'Duur vacuüm', eenheid: 'min' },
+    diameter_pers: { label: 'Diameter pers' },
+    diameter_zuig: { label: 'Diameter zuig' },
+    leidinglengte: { label: 'Totale leidinglengte', eenheid: 'm' },
+    type_gas: { label: 'Type gas' },
+    extra_vulling: { label: 'Extra vulling', eenheid: 'g' },
+    werkspanning: { label: 'Werkspanning' },
+    afzekering: { label: 'Afzekering' },
   },
 };
 
@@ -82,6 +87,23 @@ function formatAntwoorden(formKey, antwoorden) {
     .map(([id, meta]) => {
       const raw = antwoorden ? antwoorden[id] : undefined;
       if (raw === undefined || raw === null || raw === '') return null;
+
+      // A repeating group (e.g. one row per indoor-unit, each with its
+      // own merk/model/serienummer/locatie) — render as "#1 Merk: X, ...".
+      if (meta.subLabels) {
+        if (!Array.isArray(raw)) return null;
+        const rijen = raw
+          .map((rij, i) => {
+            const velden = Object.entries(meta.subLabels)
+              .map(([subId, subLabel]) => (rij && rij[subId] ? `${subLabel}: ${rij[subId]}` : null))
+              .filter(Boolean);
+            return velden.length ? `#${i + 1} ${velden.join(', ')}` : null;
+          })
+          .filter(Boolean);
+        if (rijen.length === 0) return null;
+        return { label: meta.label, waarde: rijen.join('  |  ') };
+      }
+
       const waarde = Array.isArray(raw)
         ? raw
             .filter(Boolean)

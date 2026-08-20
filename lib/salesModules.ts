@@ -4,7 +4,7 @@
 // the backoffice quotes.
 
 export type ModuleKey = 'verwarming' | 'airco' | 'zon' | 'sanitair' | 'ventilatie';
-export type VeldKind = 'keuze' | 'num' | 'getal' | 'tekst' | 'chips' | 'lijst' | 'datum' | 'dynamische_lijst';
+export type VeldKind = 'keuze' | 'num' | 'getal' | 'tekst' | 'chips' | 'lijst' | 'datum' | 'dynamische_lijst' | 'dynamische_groep';
 
 export interface SalesVeld {
   id: string;
@@ -18,6 +18,8 @@ export interface SalesVeld {
   /** For kind 'lijst': id of the field whose numeric value decides how
    *  many inputs to render (e.g. one per room, driven by "aantal ruimtes"). */
   telVeldId?: string;
+  /** For kind 'dynamische_groep': the sub-fields each row in the list contains. */
+  subVelden?: { id: string; label: string; ph?: string }[];
 }
 
 export interface SalesModule {
@@ -129,6 +131,10 @@ export function missingVelden(mod: VeldHouder, antwoorden: Record<string, unknow
       if (v.kind === 'dynamische_lijst') {
         const arr = Array.isArray(w) ? (w as string[]) : [];
         return !arr.some((x) => x && x.trim());
+      }
+      if (v.kind === 'dynamische_groep') {
+        const arr = Array.isArray(w) ? (w as Record<string, string>[]) : [];
+        return !arr.some((r) => Object.values(r).some((x) => x && String(x).trim()));
       }
       if (v.kind === 'lijst') {
         const aantal = Math.max(0, Math.floor(Number(antwoorden[v.telVeldId ?? '']) || 0));

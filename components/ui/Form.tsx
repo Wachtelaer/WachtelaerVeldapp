@@ -193,6 +193,58 @@ export function DynamicTextList({
   );
 }
 
+/** A growing list of rows, each with its own fixed set of text sub-fields
+ *  (e.g. merk/model/serienummer/locatie per binnenunit) — starts with one
+ *  empty row, adds a new one once the current last row has anything filled
+ *  in, and lets you remove a row. */
+export function DynamicGroupList({
+  subVelden,
+  values,
+  onChange,
+}: {
+  subVelden: { id: string; label: string; ph?: string }[];
+  values: Record<string, string>[];
+  onChange: (values: Record<string, string>[]) => void;
+}) {
+  const legeRegel = () => Object.fromEntries(subVelden.map((s) => [s.id, '']));
+  const isLeeg = (r: Record<string, string>) => subVelden.every((s) => !(r[s.id] ?? '').trim());
+  const regels = values.length ? values : [legeRegel()];
+
+  const updateRegel = (index: number, veldId: string, waarde: string) => {
+    const next = regels.map((r, i) => (i === index ? { ...r, [veldId]: waarde } : r));
+    if (!isLeeg(next[next.length - 1])) next.push(legeRegel());
+    onChange(next);
+  };
+
+  const removeRegel = (index: number) => {
+    const next = regels.filter((_, i) => i !== index);
+    onChange(next.length ? next : [legeRegel()]);
+  };
+
+  return (
+    <View style={{ gap: 10 }}>
+      {regels.map((regel, i) => (
+        <View key={i} style={styles.groupCard}>
+          <View style={styles.groupCardHead}>
+            <Text style={styles.groupCardTitel}>{`#${i + 1}`}</Text>
+            {regels.length > 1 ? (
+              <TouchableOpacity onPress={() => removeRegel(i)} accessibilityRole="button">
+                <Ionicons name="close" size={16} color={colors.inkMuted} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          {subVelden.map((s) => (
+            <View key={s.id} style={{ gap: 4 }}>
+              <Text style={styles.groupCardLabel}>{s.label}</Text>
+              <TextField value={regel[s.id] ?? ''} onChangeText={(v) => updateRegel(i, s.id, v)} placeholder={s.ph} />
+            </View>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 /** Wrapped pill buttons — single-select (like a radio group) or multi-select (like checkboxes). */
 export function ChipGroup({
   opties,
@@ -299,6 +351,10 @@ const styles = StyleSheet.create({
   eenheid: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkMuted },
   dynamicRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dynamicRemove: { width: 32, height: 44, alignItems: 'center', justifyContent: 'center' },
+  groupCard: { borderWidth: 1, borderColor: colors.dividerStrong, padding: 10, gap: 8 },
+  groupCardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  groupCardTitel: { fontFamily: fonts.monoMedium, fontSize: 11, letterSpacing: 0.6, textTransform: 'uppercase', color: colors.inkMuted },
+  groupCardLabel: { fontFamily: fonts.mono, fontSize: 10.5, color: colors.inkMuted },
   chipGroup: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center', borderWidth: 1, borderColor: colors.dividerStrong },
   chipActive: { backgroundColor: colors.accent, borderColor: colors.accentDark },

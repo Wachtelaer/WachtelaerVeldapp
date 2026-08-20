@@ -5,7 +5,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { BackRow, SectionLabel } from '@/components/ui/Basics';
 import { Button } from '@/components/ui/Button';
-import { ChipGroup, DynamicTextList, FieldLabel, NumberField, TextArea, TextField } from '@/components/ui/Form';
+import { ChipGroup, DynamicGroupList, DynamicTextList, FieldLabel, NumberField, TextArea, TextField } from '@/components/ui/Form';
 import { DatePickerField } from '@/components/ui/DatePickerField';
 import { PhotoPicker } from '@/components/PhotoPicker';
 import { useAuth } from '@/context/AuthProvider';
@@ -118,6 +118,13 @@ export default function FormulierInvulScreen() {
                 values={(antwoorden[v.id] as string[]) || []}
                 onChange={(vals) => setVeld(v.id, vals)}
                 placeholder={v.ph}
+              />
+            ) : null}
+            {v.kind === 'dynamische_groep' ? (
+              <DynamicGroupList
+                subVelden={v.subVelden ?? []}
+                values={(antwoorden[v.id] as Record<string, string>[]) || []}
+                onChange={(vals) => setVeld(v.id, vals)}
               />
             ) : null}
             {v.hintTekst ? <Text style={styles.hint}>{v.hintTekst}</Text> : null}
