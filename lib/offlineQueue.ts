@@ -7,6 +7,7 @@ import { sendMessage, type SendMessageInput } from '@/lib/api/chat';
 import { createOpmeting, type NieuweOpmetingInput } from '@/lib/api/opmetingen';
 import { createAanvraag, type NieuweVerlofaanvraagInput } from '@/lib/api/verlof';
 import { createMelding, type NieuweMeldingInput } from '@/lib/api/magazijn';
+import { createFormulier, type NieuwFormulierInput } from '@/lib/api/formulieren';
 
 const STORAGE_KEY = 'wachtelaer.offlineQueue.v1';
 
@@ -21,7 +22,8 @@ type QueuedAction =
   | { id: string; kind: 'submit_chat_bericht'; createdAt: number; payload: SendMessageInput }
   | { id: string; kind: 'submit_opmeting'; createdAt: number; payload: NieuweOpmetingInput }
   | { id: string; kind: 'submit_verlofaanvraag'; createdAt: number; payload: NieuweVerlofaanvraagInput }
-  | { id: string; kind: 'submit_magazijn_melding'; createdAt: number; payload: NieuweMeldingInput };
+  | { id: string; kind: 'submit_magazijn_melding'; createdAt: number; payload: NieuweMeldingInput }
+  | { id: string; kind: 'submit_formulier'; createdAt: number; payload: NieuwFormulierInput };
 
 let queue: QueuedAction[] = [];
 let hydrated = false;
@@ -84,6 +86,12 @@ export async function enqueueMagazijnMelding(payload: NieuweMeldingInput) {
   await persist();
 }
 
+export async function enqueueFormulier(payload: NieuwFormulierInput) {
+  await hydrate();
+  queue = [...queue, { id: makeId(), kind: 'submit_formulier', createdAt: Date.now(), payload }];
+  await persist();
+}
+
 export function getQueueLength() {
   return queue.length;
 }
@@ -104,8 +112,10 @@ export async function flushQueue() {
         await createOpmeting(action.payload);
       } else if (action.kind === 'submit_verlofaanvraag') {
         await createAanvraag(action.payload);
-      } else {
+      } else if (action.kind === 'submit_magazijn_melding') {
         await createMelding(action.payload);
+      } else {
+        await createFormulier(action.payload);
       }
     } catch {
       remaining.push(action);

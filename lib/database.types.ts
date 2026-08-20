@@ -136,6 +136,26 @@ export interface PlanRead {
   last_read_at: string;
 }
 
+export interface Formulier {
+  id: string;
+  invuller_id: string;
+  formulier: string;
+  klant_naam: string;
+  klant_adres: string;
+  klant_tel: string;
+  antwoorden: Record<string, unknown>;
+  nota: string;
+  created_at: string;
+}
+
+export interface FormulierFoto {
+  id: string;
+  formulier_id: string;
+  storage_path: string;
+  label: string;
+  created_at: string;
+}
+
 export interface MagazijnMelding {
   id: string;
   melder_id: string;
@@ -218,6 +238,16 @@ export interface Database {
         Row: MagazijnMeldingFoto;
         Insert: Partial<MagazijnMeldingFoto> & Pick<MagazijnMeldingFoto, 'melding_id' | 'storage_path'>;
         Update: Partial<MagazijnMeldingFoto>;
+      };
+      formulieren: {
+        Row: Formulier;
+        Insert: Partial<Formulier> & Pick<Formulier, 'invuller_id' | 'formulier'>;
+        Update: Partial<Formulier>;
+      };
+      formulier_fotos: {
+        Row: FormulierFoto;
+        Insert: Partial<FormulierFoto> & Pick<FormulierFoto, 'formulier_id' | 'storage_path'>;
+        Update: Partial<FormulierFoto>;
       };
     };
   };

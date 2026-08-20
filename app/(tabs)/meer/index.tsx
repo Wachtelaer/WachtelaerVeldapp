@@ -42,6 +42,14 @@ export default function MeerTab() {
           <Ionicons name="chevron-forward" size={16} color={colors.accent} />
         </TouchableOpacity>
 
+        <TouchableOpacity style={styles.card} onPress={() => router.push('/meer/formulieren')} accessibilityRole="button">
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>Formulieren</Text>
+            <Text style={styles.cardBody}>Onderhoud, opstart, druktest en recuperatie invullen bij de klant.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+        </TouchableOpacity>
+
         {isMgmt ? (
           <TouchableOpacity style={styles.card} onPress={() => router.push('/meer/ploeg')} accessibilityRole="button">
             <View style={{ flex: 1 }}>

@@ -4,7 +4,7 @@
 // the backoffice quotes.
 
 export type ModuleKey = 'verwarming' | 'airco' | 'zon' | 'sanitair' | 'ventilatie';
-export type VeldKind = 'keuze' | 'num' | 'getal' | 'tekst' | 'chips' | 'lijst';
+export type VeldKind = 'keuze' | 'num' | 'getal' | 'tekst' | 'chips' | 'lijst' | 'datum';
 
 export interface SalesVeld {
   id: string;
@@ -115,8 +115,13 @@ export function getModule(key: string): SalesModule {
   return SALES_MODULES.find((m) => m.key === key) ?? SALES_MODULES[0];
 }
 
+/** Any "has a list of velden" config — SalesModule and FormTemplate both qualify. */
+export interface VeldHouder {
+  velden: SalesVeld[];
+}
+
 /** Which fields are still empty, in the same order as the module's questionnaire. */
-export function missingVelden(mod: SalesModule, antwoorden: Record<string, unknown>): string[] {
+export function missingVelden(mod: VeldHouder, antwoorden: Record<string, unknown>): string[] {
   return mod.velden
     .filter((v) => {
       const w = antwoorden[v.id];

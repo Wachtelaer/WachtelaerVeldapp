@@ -1,0 +1,16 @@
+{
+  "name": "wachtelaer-formulieren-backup",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Daily local backup of formulieren (PDF) and their photos (zip) to a folder per klant.",
+  "main": "backup.js",
+  "scripts": {
+    "backup": "node backup.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.112.3",
+    "archiver": "7.0.1",
+    "dotenv": "17.4.2",
+    "pdfkit": "0.19.1"
+  }
+}
