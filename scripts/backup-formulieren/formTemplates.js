@@ -13,13 +13,16 @@ const FORM_NAMES = {
 
 const VELD_LABELS = {
   onderhoud_airco: {
-    merk_model: { label: 'Merk/model' },
-    serienummer: { label: 'Serienummer' },
-    koelmiddel: { label: 'Koelmiddel' },
+    buiten_merk: { label: 'Buitenunit — merk' },
+    buiten_type: { label: 'Buitenunit — type' },
+    buiten_serienummer: { label: 'Buitenunit — serienummer' },
+    buiten_koelmiddel: { label: 'Buitenunit — koelmiddel' },
+    buiten_hoeveelheid: { label: 'Buitenunit — hoeveelheid koelmiddel', eenheid: 'kg' },
     druk: { label: 'Gemeten druk', eenheid: 'bar' },
     filters: { label: 'Filters' },
     buitenunit: { label: 'Buitenunit gereinigd' },
-    binnenunit: { label: 'Binnenunit gereinigd' },
+    binnenunits: { label: 'Binnenunits (locatie/type)' },
+    binnenunit: { label: 'Binnenunits gereinigd' },
     afvoer: { label: 'Afvoer gecontroleerd' },
     elektrisch: { label: 'Elektrische aansluitingen gecontroleerd' },
     werking: { label: 'Werking getest' },

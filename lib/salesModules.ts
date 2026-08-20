@@ -4,7 +4,7 @@
 // the backoffice quotes.
 
 export type ModuleKey = 'verwarming' | 'airco' | 'zon' | 'sanitair' | 'ventilatie';
-export type VeldKind = 'keuze' | 'num' | 'getal' | 'tekst' | 'chips' | 'lijst' | 'datum';
+export type VeldKind = 'keuze' | 'num' | 'getal' | 'tekst' | 'chips' | 'lijst' | 'datum' | 'dynamische_lijst';
 
 export interface SalesVeld {
   id: string;
@@ -126,6 +126,10 @@ export function missingVelden(mod: VeldHouder, antwoorden: Record<string, unknow
     .filter((v) => {
       const w = antwoorden[v.id];
       if (v.kind === 'chips') return !(Array.isArray(w) && w.length);
+      if (v.kind === 'dynamische_lijst') {
+        const arr = Array.isArray(w) ? (w as string[]) : [];
+        return !arr.some((x) => x && x.trim());
+      }
       if (v.kind === 'lijst') {
         const aantal = Math.max(0, Math.floor(Number(antwoorden[v.telVeldId ?? '']) || 0));
         if (aantal === 0) return false; // nothing to fill in until the count is set

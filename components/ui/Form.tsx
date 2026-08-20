@@ -150,6 +150,49 @@ export function NumberFieldList({
   );
 }
 
+/** A growing list of free-text lines — starts with one empty line, adds a
+ *  new empty one below as soon as the last line gets text, and lets you
+ *  remove a line. E.g. one binnenunit per line, no fixed count needed. */
+export function DynamicTextList({
+  values,
+  onChange,
+  placeholder,
+}: {
+  values: string[];
+  onChange: (values: string[]) => void;
+  placeholder?: string;
+}) {
+  const regels = values.length ? values : [''];
+
+  const updateRegel = (index: number, waarde: string) => {
+    const next = regels.map((r, i) => (i === index ? waarde : r));
+    if (next[next.length - 1].trim()) next.push('');
+    onChange(next);
+  };
+
+  const removeRegel = (index: number) => {
+    const next = regels.filter((_, i) => i !== index);
+    onChange(next.length ? next : ['']);
+  };
+
+  return (
+    <View style={{ gap: 8 }}>
+      {regels.map((regel, i) => (
+        <View key={i} style={styles.dynamicRow}>
+          <View style={{ flex: 1 }}>
+            <TextField value={regel} onChangeText={(v) => updateRegel(i, v)} placeholder={placeholder} />
+          </View>
+          {regels.length > 1 ? (
+            <TouchableOpacity onPress={() => removeRegel(i)} accessibilityRole="button" style={styles.dynamicRemove}>
+              <Ionicons name="close" size={16} color={colors.inkMuted} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 /** Wrapped pill buttons — single-select (like a radio group) or multi-select (like checkboxes). */
 export function ChipGroup({
   opties,
@@ -254,6 +297,8 @@ const styles = StyleSheet.create({
   stepperBtnRight: { borderRightWidth: 0, borderLeftWidth: 1, borderLeftColor: colors.dividerStrong },
   stepperValue: { minWidth: 44, textAlign: 'center', fontFamily: fonts.monoMedium, fontSize: 16, color: colors.ink },
   eenheid: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkMuted },
+  dynamicRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dynamicRemove: { width: 32, height: 44, alignItems: 'center', justifyContent: 'center' },
   chipGroup: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center', borderWidth: 1, borderColor: colors.dividerStrong },
   chipActive: { backgroundColor: colors.accent, borderColor: colors.accentDark },
