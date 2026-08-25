@@ -1,34 +1,14 @@
-import { useState } from 'react';
-import * as ImagePicker from 'expo-image-picker';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { LocalPhotoThumb } from '@/components/PhotoGrid';
-import { PhotoSourceSheet } from '@/components/PhotoSourceSheet';
+import { usePhotoSourcePicker } from '@/components/PhotoSourceSheet';
 import { colors, fonts } from '@/lib/theme';
 
 export function PhotoPicker({ uris, onChange }: { uris: string[]; onChange: (uris: string[]) => void }) {
-  const [sourceSheetOpen, setSourceSheetOpen] = useState(false);
-
-  const maakFoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') return;
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-    if (!result.canceled) {
-      onChange([...uris, ...result.assets.map((a) => a.uri)]);
-    }
-  };
-
-  const kiesUitBibliotheek = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.7,
-      allowsMultipleSelection: true,
-    });
-    if (!result.canceled) {
-      onChange([...uris, ...result.assets.map((a) => a.uri)]);
-    }
-  };
+  const { open, busy, sheet } = usePhotoSourcePicker((newUris) => onChange([...uris, ...newUris]), {
+    allowsMultipleSelection: true,
+  });
 
   const removeAt = (index: number) => onChange(uris.filter((_, i) => i !== index));
 
@@ -40,19 +20,15 @@ export function PhotoPicker({ uris, onChange }: { uris: string[]; onChange: (uri
         </View>
       ))}
       <TouchableOpacity
-        style={[styles.cell, styles.addCell]}
-        onPress={() => setSourceSheetOpen(true)}
+        style={[styles.cell, styles.addCell, busy && styles.addCellBusy]}
+        onPress={open}
+        disabled={busy}
         accessibilityRole="button">
         <Ionicons name="camera-outline" size={22} color={colors.accentDark} />
         <Text style={styles.addLabel}>foto</Text>
       </TouchableOpacity>
 
-      <PhotoSourceSheet
-        visible={sourceSheetOpen}
-        onClose={() => setSourceSheetOpen(false)}
-        onPickCamera={maakFoto}
-        onPickLibrary={kiesUitBibliotheek}
-      />
+      {sheet}
     </View>
   );
 }
@@ -69,5 +45,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 5,
   },
+  addCellBusy: { opacity: 0.5 },
   addLabel: { fontFamily: fonts.monoMedium, fontSize: 10, color: colors.accentDark },
 });

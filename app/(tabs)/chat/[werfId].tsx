@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import {
   ActivityIndicator,
   Image,
@@ -16,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 import { AppHeader } from '@/components/AppHeader';
-import { PhotoSourceSheet } from '@/components/PhotoSourceSheet';
+import { usePhotoSourcePicker } from '@/components/PhotoSourceSheet';
 import { BackRow } from '@/components/ui/Basics';
 import { useAuth } from '@/context/AuthProvider';
 import { getWerf } from '@/lib/api/werven';
@@ -52,7 +51,9 @@ export default function ChatThreadScreen() {
   const [messages, setMessages] = useState<(WerfChatBericht & { auteurNaam: string })[]>([]);
   const [draft, setDraft] = useState('');
   const [fotoUri, setFotoUri] = useState<string | null>(null);
-  const [sourceSheetOpen, setSourceSheetOpen] = useState(false);
+  const { open: openFotoSheet, busy: fotoBusy, sheet: fotoSheet } = usePhotoSourcePicker((uris) =>
+    setFotoUri(uris[0] ?? null)
+  );
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
@@ -75,18 +76,6 @@ export default function ChatThreadScreen() {
       load();
     }, [load])
   );
-
-  const maakFoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') return;
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-    if (!result.canceled) setFotoUri(result.assets[0].uri);
-  };
-
-  const kiesUitBibliotheek = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
-    if (!result.canceled) setFotoUri(result.assets[0].uri);
-  };
 
   const send = async () => {
     if (!werfId || !profile || (!draft.trim() && !fotoUri)) return;
@@ -151,7 +140,11 @@ export default function ChatThreadScreen() {
       ) : null}
 
       <View style={styles.inputRow}>
-        <TouchableOpacity style={styles.iconBtn} onPress={() => setSourceSheetOpen(true)} accessibilityRole="button">
+        <TouchableOpacity
+          style={[styles.iconBtn, fotoBusy && styles.iconBtnBusy]}
+          onPress={openFotoSheet}
+          disabled={fotoBusy}
+          accessibilityRole="button">
           <Ionicons name="camera-outline" size={18} color={colors.accentDark} />
         </TouchableOpacity>
         <TextInput
@@ -170,12 +163,7 @@ export default function ChatThreadScreen() {
         </TouchableOpacity>
       </View>
 
-      <PhotoSourceSheet
-        visible={sourceSheetOpen}
-        onClose={() => setSourceSheetOpen(false)}
-        onPickCamera={maakFoto}
-        onPickLibrary={kiesUitBibliotheek}
-      />
+      {fotoSheet}
     </KeyboardAvoidingView>
   );
 }
@@ -238,6 +226,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconBtnBusy: { opacity: 0.5 },
   input: {
     flex: 1,
     minHeight: 44,
