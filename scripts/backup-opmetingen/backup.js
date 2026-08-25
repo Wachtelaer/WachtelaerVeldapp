@@ -120,14 +120,16 @@ async function main() {
 
   let pdfsGemaakt = 0;
   let zipsGemaakt = 0;
+  let pdfsVerplaatst = 0;
+  let zipsVerplaatst = 0;
   let overgeslagen = 0;
 
   for (const opmeting of opmetingen ?? []) {
     const base = baseFilename(opmeting);
     const klantDir = path.join(BACKUP_DIR, klantMapNaam(opmeting));
-    // Anything already backed up flat in BACKUP_DIR (from before the
-    // per-klant folders existed) stays there untouched — only check the
-    // legacy path too so those entries aren't re-created as duplicates.
+    // Older runs (from before per-klant folders existed) wrote these flat
+    // in BACKUP_DIR — migrate them into the klant folder instead of
+    // leaving them scattered at the root.
     const legacyPdfPath = path.join(BACKUP_DIR, `${base}.pdf`);
     const legacyZipPath = path.join(BACKUP_DIR, `${base}_fotos.zip`);
     const pdfPath = path.join(klantDir, `${base}.pdf`);
@@ -136,25 +138,37 @@ async function main() {
 
     let deedIets = false;
 
-    if (!fs.existsSync(pdfPath) && !fs.existsSync(legacyPdfPath)) {
+    if (!fs.existsSync(pdfPath)) {
       fs.mkdirSync(klantDir, { recursive: true });
-      await writePdf(pdfPath, opmeting, verkoperNaam);
-      pdfsGemaakt++;
+      if (fs.existsSync(legacyPdfPath)) {
+        fs.renameSync(legacyPdfPath, pdfPath);
+        pdfsVerplaatst++;
+      } else {
+        await writePdf(pdfPath, opmeting, verkoperNaam);
+        pdfsGemaakt++;
+      }
       deedIets = true;
     }
 
-    if (!fs.existsSync(zipPath) && !fs.existsSync(legacyZipPath)) {
-      const { data: fotos, error: fotoError } = await supabase
-        .from('opmeting_fotos')
-        .select('storage_path, label')
-        .eq('opmeting_id', opmeting.id);
-      if (fotoError) throw fotoError;
-
-      if (fotos && fotos.length > 0) {
+    if (!fs.existsSync(zipPath)) {
+      if (fs.existsSync(legacyZipPath)) {
         fs.mkdirSync(klantDir, { recursive: true });
-        await writeFotosZip(zipPath, fotos);
-        zipsGemaakt++;
+        fs.renameSync(legacyZipPath, zipPath);
+        zipsVerplaatst++;
         deedIets = true;
+      } else {
+        const { data: fotos, error: fotoError } = await supabase
+          .from('opmeting_fotos')
+          .select('storage_path, label')
+          .eq('opmeting_id', opmeting.id);
+        if (fotoError) throw fotoError;
+
+        if (fotos && fotos.length > 0) {
+          fs.mkdirSync(klantDir, { recursive: true });
+          await writeFotosZip(zipPath, fotos);
+          zipsGemaakt++;
+          deedIets = true;
+        }
       }
     }
 
@@ -162,7 +176,7 @@ async function main() {
   }
 
   console.log(
-    `Klaar — ${pdfsGemaakt} nieuwe pdf('s), ${zipsGemaakt} nieuwe foto-zip(s), ${overgeslagen} opmetingen waren al volledig gebackupt.`
+    `Klaar — ${pdfsGemaakt} nieuwe pdf('s), ${zipsGemaakt} nieuwe foto-zip(s), ${pdfsVerplaatst + zipsVerplaatst} bestand(en) verplaatst naar hun klantmap, ${overgeslagen} opmetingen waren al volledig gebackupt.`
   );
 }
 

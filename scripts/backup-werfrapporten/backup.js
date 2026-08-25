@@ -125,6 +125,8 @@ async function main() {
 
   let pdfsGemaakt = 0;
   let zipsGemaakt = 0;
+  let pdfsVerplaatst = 0;
+  let zipsVerplaatst = 0;
   let overgeslagen = 0;
 
   for (const rapport of rapporten ?? []) {
@@ -132,9 +134,9 @@ async function main() {
     const auteurNaam = rapport.profiles?.full_name ?? 'Onbekend';
     const base = baseFilename(rapport, werf.code);
     const werfDir = path.join(BACKUP_DIR, werfMapNaam(werf));
-    // Anything already backed up flat in BACKUP_DIR (from before the
-    // per-werf folders existed) stays there untouched — only check the
-    // legacy path too so those entries aren't re-created as duplicates.
+    // Older runs (from before per-werf folders existed) wrote these flat
+    // in BACKUP_DIR — migrate them into the werf folder instead of
+    // leaving them scattered at the root.
     const legacyPdfPath = path.join(BACKUP_DIR, `${base}.pdf`);
     const legacyZipPath = path.join(BACKUP_DIR, `${base}_fotos.zip`);
     const pdfPath = path.join(werfDir, `${base}.pdf`);
@@ -142,37 +144,49 @@ async function main() {
 
     let deedIets = false;
 
-    if (!fs.existsSync(pdfPath) && !fs.existsSync(legacyPdfPath)) {
-      const { data: reactiesRaw, error: reactiesError } = await supabase
-        .from('werfrapport_reacties')
-        .select('tekst, created_at, profiles(full_name)')
-        .eq('rapport_id', rapport.id)
-        .order('created_at', { ascending: true });
-      if (reactiesError) throw reactiesError;
-      const reacties = (reactiesRaw ?? []).map((r) => ({
-        tekst: r.tekst,
-        created_at: r.created_at,
-        auteurNaam: r.profiles?.full_name ?? 'Onbekend',
-      }));
-
+    if (!fs.existsSync(pdfPath)) {
       fs.mkdirSync(werfDir, { recursive: true });
-      await writePdf(pdfPath, rapport, werf, auteurNaam, reacties);
-      pdfsGemaakt++;
+      if (fs.existsSync(legacyPdfPath)) {
+        fs.renameSync(legacyPdfPath, pdfPath);
+        pdfsVerplaatst++;
+      } else {
+        const { data: reactiesRaw, error: reactiesError } = await supabase
+          .from('werfrapport_reacties')
+          .select('tekst, created_at, profiles(full_name)')
+          .eq('rapport_id', rapport.id)
+          .order('created_at', { ascending: true });
+        if (reactiesError) throw reactiesError;
+        const reacties = (reactiesRaw ?? []).map((r) => ({
+          tekst: r.tekst,
+          created_at: r.created_at,
+          auteurNaam: r.profiles?.full_name ?? 'Onbekend',
+        }));
+
+        await writePdf(pdfPath, rapport, werf, auteurNaam, reacties);
+        pdfsGemaakt++;
+      }
       deedIets = true;
     }
 
-    if (!fs.existsSync(zipPath) && !fs.existsSync(legacyZipPath)) {
-      const { data: fotos, error: fotoError } = await supabase
-        .from('werfrapport_fotos')
-        .select('storage_path, label')
-        .eq('rapport_id', rapport.id);
-      if (fotoError) throw fotoError;
-
-      if (fotos && fotos.length > 0) {
+    if (!fs.existsSync(zipPath)) {
+      if (fs.existsSync(legacyZipPath)) {
         fs.mkdirSync(werfDir, { recursive: true });
-        await writeFotosZip(zipPath, fotos);
-        zipsGemaakt++;
+        fs.renameSync(legacyZipPath, zipPath);
+        zipsVerplaatst++;
         deedIets = true;
+      } else {
+        const { data: fotos, error: fotoError } = await supabase
+          .from('werfrapport_fotos')
+          .select('storage_path, label')
+          .eq('rapport_id', rapport.id);
+        if (fotoError) throw fotoError;
+
+        if (fotos && fotos.length > 0) {
+          fs.mkdirSync(werfDir, { recursive: true });
+          await writeFotosZip(zipPath, fotos);
+          zipsGemaakt++;
+          deedIets = true;
+        }
       }
     }
 
@@ -180,7 +194,7 @@ async function main() {
   }
 
   console.log(
-    `Klaar — ${pdfsGemaakt} nieuwe pdf('s), ${zipsGemaakt} nieuwe foto-zip(s), ${overgeslagen} rapporten waren al volledig gebackupt.`
+    `Klaar — ${pdfsGemaakt} nieuwe pdf('s), ${zipsGemaakt} nieuwe foto-zip(s), ${pdfsVerplaatst + zipsVerplaatst} bestand(en) verplaatst naar hun werfmap, ${overgeslagen} rapporten waren al volledig gebackupt.`
   );
 }
 
