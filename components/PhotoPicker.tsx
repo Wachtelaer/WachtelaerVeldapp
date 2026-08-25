@@ -1,19 +1,37 @@
 import * as ImagePicker from 'expo-image-picker';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { LocalPhotoThumb } from '@/components/PhotoGrid';
 import { colors, fonts } from '@/lib/theme';
 
 export function PhotoPicker({ uris, onChange }: { uris: string[]; onChange: (uris: string[]) => void }) {
-  const addFoto = async () => {
+  const maakFoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    const result = await (status === 'granted'
-      ? ImagePicker.launchCameraAsync({ quality: 0.7 })
-      : ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, allowsMultipleSelection: true }));
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (!result.canceled) {
       onChange([...uris, ...result.assets.map((a) => a.uri)]);
     }
+  };
+
+  const kiesUitBibliotheek = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.7,
+      allowsMultipleSelection: true,
+    });
+    if (!result.canceled) {
+      onChange([...uris, ...result.assets.map((a) => a.uri)]);
+    }
+  };
+
+  const addFoto = () => {
+    Alert.alert('Foto toevoegen', undefined, [
+      { text: 'Foto maken', onPress: maakFoto },
+      { text: 'Kies uit bibliotheek', onPress: kiesUitBibliotheek },
+      { text: 'Annuleren', style: 'cancel' },
+    ]);
   };
 
   const removeAt = (index: number) => onChange(uris.filter((_, i) => i !== index));

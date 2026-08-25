@@ -3,6 +3,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -74,12 +75,24 @@ export default function ChatThreadScreen() {
     }, [load])
   );
 
-  const addFoto = async () => {
+  const maakFoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    const result = await (status === 'granted'
-      ? ImagePicker.launchCameraAsync({ quality: 0.7 })
-      : ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 }));
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (!result.canceled) setFotoUri(result.assets[0].uri);
+  };
+
+  const kiesUitBibliotheek = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
+    if (!result.canceled) setFotoUri(result.assets[0].uri);
+  };
+
+  const addFoto = () => {
+    Alert.alert('Foto toevoegen', undefined, [
+      { text: 'Foto maken', onPress: maakFoto },
+      { text: 'Kies uit bibliotheek', onPress: kiesUitBibliotheek },
+      { text: 'Annuleren', style: 'cancel' },
+    ]);
   };
 
   const send = async () => {
