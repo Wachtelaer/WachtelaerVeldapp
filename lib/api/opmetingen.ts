@@ -51,13 +51,18 @@ export async function createOpmeting(input: NieuweOpmetingInput): Promise<string
 
 export interface OpmetingListItem extends Opmeting {
   fotoCount: number;
+  verkoperNaam: string;
 }
 
-export async function listMyOpmetingen(verkoperId: string): Promise<OpmetingListItem[]> {
+/**
+ * No verkoper filter needed — RLS already scopes this to "my own opmetingen"
+ * for a sales user and "every opmeting" for management, same as the rest of
+ * the app relies on RLS for visibility.
+ */
+export async function listOpmetingen(): Promise<OpmetingListItem[]> {
   const { data: opmetingen, error } = await supabase
     .from('opmetingen')
-    .select('*')
-    .eq('verkoper_id', verkoperId)
+    .select('*, profiles(full_name)')
     .order('created_at', { ascending: false });
   if (error) throw error;
   if (!opmetingen?.length) return [];
@@ -76,5 +81,9 @@ export async function listMyOpmetingen(verkoperId: string): Promise<OpmetingList
     fotoCountById.set(f.opmeting_id, (fotoCountById.get(f.opmeting_id) ?? 0) + 1);
   }
 
-  return opmetingen.map((o) => ({ ...o, fotoCount: fotoCountById.get(o.id) ?? 0 }));
+  return opmetingen.map((o: any) => ({
+    ...o,
+    fotoCount: fotoCountById.get(o.id) ?? 0,
+    verkoperNaam: o.profiles?.full_name ?? 'Onbekend',
+  }));
 }
