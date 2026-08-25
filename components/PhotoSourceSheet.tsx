@@ -14,6 +14,14 @@ import { colors, fonts } from '@/lib/theme';
 // through this settle delay instead of relying on timing alone.
 const SETTLE_MS = 350;
 
+// expo-image-picker exports every selected photo (full-resolution, from
+// iCloud if needed) into the app's sandbox before returning. Letting
+// someone select an unbounded batch from their library spikes native
+// memory enough to get the app OS-killed mid-pick, wiping the form's
+// state on relaunch. Capping the batch keeps that export bounded —
+// picking more just means doing it in a couple of rounds.
+const MAX_LIBRARY_SELECTION = 10;
+
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -49,7 +57,14 @@ export function usePhotoSourcePicker(
     });
 
   const pickFromLibrary = () =>
-    runPick(() => ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, allowsMultipleSelection }));
+    runPick(() =>
+      ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.7,
+        allowsMultipleSelection,
+        selectionLimit: allowsMultipleSelection ? MAX_LIBRARY_SELECTION : 1,
+      })
+    );
 
   const choose = (launch: () => Promise<void>) => {
     setVisible(false);
