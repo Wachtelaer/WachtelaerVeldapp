@@ -19,28 +19,25 @@ export function PhotoSourceSheet({
   onPickCamera: () => void;
   onPickLibrary: () => void;
 }) {
+  // Launching the native camera/library while this Modal is still on screen
+  // (or mid-dismiss) makes two native presentations race, which crashes the
+  // app on iOS/Android — so close first and only then, once the Modal has
+  // actually finished its dismiss animation, fire the picker.
+  const choose = (action: () => void) => {
+    onClose();
+    setTimeout(action, 350);
+  };
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.title}>Foto toevoegen</Text>
-          <Pressable
-            style={styles.option}
-            onPress={() => {
-              onClose();
-              onPickCamera();
-            }}
-            accessibilityRole="button">
+          <Pressable style={styles.option} onPress={() => choose(onPickCamera)} accessibilityRole="button">
             <Ionicons name="camera-outline" size={19} color={colors.accentDark} />
             <Text style={styles.optionLabel}>Foto maken</Text>
           </Pressable>
-          <Pressable
-            style={styles.option}
-            onPress={() => {
-              onClose();
-              onPickLibrary();
-            }}
-            accessibilityRole="button">
+          <Pressable style={styles.option} onPress={() => choose(onPickLibrary)} accessibilityRole="button">
             <Ionicons name="images-outline" size={19} color={colors.accentDark} />
             <Text style={styles.optionLabel}>Kies uit bibliotheek</Text>
           </Pressable>
