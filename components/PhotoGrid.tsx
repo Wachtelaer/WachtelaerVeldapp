@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { colors, fonts } from '@/lib/theme';
@@ -25,7 +26,7 @@ function RemotePhoto({ foto, aspectRatio = 1 }: { foto: WerfrapportFoto; aspectR
   return (
     <View style={[styles.thumb, { aspectRatio }]}>
       {url ? (
-        <Image source={{ uri: url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <Image source={{ uri: url }} style={StyleSheet.absoluteFill} contentFit="cover" />
       ) : (
         <View style={styles.placeholderFill} />
       )}
@@ -62,7 +63,7 @@ export function RemotePhotoGrid({
 export function LocalPhotoThumb({ uri, onRemove }: { uri: string; onRemove?: () => void }) {
   return (
     <View style={styles.thumb}>
-      <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
       {onRemove ? (
         <View style={styles.removeBadge}>
           <Ionicons name="close" size={12} color={colors.white} onPress={onRemove} />
