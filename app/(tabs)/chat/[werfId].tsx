@@ -3,7 +3,6 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -17,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 import { AppHeader } from '@/components/AppHeader';
+import { PhotoSourceSheet } from '@/components/PhotoSourceSheet';
 import { BackRow } from '@/components/ui/Basics';
 import { useAuth } from '@/context/AuthProvider';
 import { getWerf } from '@/lib/api/werven';
@@ -52,6 +52,7 @@ export default function ChatThreadScreen() {
   const [messages, setMessages] = useState<(WerfChatBericht & { auteurNaam: string })[]>([]);
   const [draft, setDraft] = useState('');
   const [fotoUri, setFotoUri] = useState<string | null>(null);
+  const [sourceSheetOpen, setSourceSheetOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
@@ -85,14 +86,6 @@ export default function ChatThreadScreen() {
   const kiesUitBibliotheek = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
     if (!result.canceled) setFotoUri(result.assets[0].uri);
-  };
-
-  const addFoto = () => {
-    Alert.alert('Foto toevoegen', undefined, [
-      { text: 'Foto maken', onPress: maakFoto },
-      { text: 'Kies uit bibliotheek', onPress: kiesUitBibliotheek },
-      { text: 'Annuleren', style: 'cancel' },
-    ]);
   };
 
   const send = async () => {
@@ -158,7 +151,7 @@ export default function ChatThreadScreen() {
       ) : null}
 
       <View style={styles.inputRow}>
-        <TouchableOpacity style={styles.iconBtn} onPress={addFoto} accessibilityRole="button">
+        <TouchableOpacity style={styles.iconBtn} onPress={() => setSourceSheetOpen(true)} accessibilityRole="button">
           <Ionicons name="camera-outline" size={18} color={colors.accentDark} />
         </TouchableOpacity>
         <TextInput
@@ -176,6 +169,13 @@ export default function ChatThreadScreen() {
           <Ionicons name="send" size={17} color={colors.white} />
         </TouchableOpacity>
       </View>
+
+      <PhotoSourceSheet
+        visible={sourceSheetOpen}
+        onClose={() => setSourceSheetOpen(false)}
+        onPickCamera={maakFoto}
+        onPickLibrary={kiesUitBibliotheek}
+      />
     </KeyboardAvoidingView>
   );
 }
