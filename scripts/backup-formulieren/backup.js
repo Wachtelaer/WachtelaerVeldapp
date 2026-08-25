@@ -6,6 +6,7 @@ const { createClient } = require('@supabase/supabase-js');
 const PDFDocument = require('pdfkit');
 const archiver = require('archiver');
 const { formNaam, formatAntwoorden } = require('./formTemplates');
+const { tekenHeader, sectieTitel, puntenKader, afwerken } = require('./pdfHuisstijl');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -43,43 +44,41 @@ function klantMapNaam(formulier) {
 
 async function writePdf(pdfPath, formulier, invullerNaam) {
   await new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ margins: { top: 50, bottom: 75, left: 50, right: 50 }, bufferPages: true });
     const stream = fs.createWriteStream(pdfPath);
     stream.on('finish', resolve);
     stream.on('error', reject);
     doc.pipe(stream);
 
-    doc.fontSize(18).text('Wachtelaer — Formulier', { underline: true });
-    doc.moveDown(0.5);
-    doc.fontSize(11).fillColor('#5d5d60').text(formNaam(formulier.formulier));
-    doc.moveDown(1);
+    tekenHeader(doc, formNaam(formulier.formulier));
 
-    doc.fillColor('#1d1f20').fontSize(10).text(`Datum: ${new Date(formulier.created_at).toLocaleString('nl-BE')}`);
-    doc.text(`Ingevuld door: ${invullerNaam}`);
-    doc.moveDown(1);
+    puntenKader(doc, [
+      ['Datum', new Date(formulier.created_at).toLocaleString('nl-BE')],
+      ['Ingevuld door', invullerNaam],
+    ]);
 
-    doc.fontSize(13).text('Klant', { underline: true });
-    doc.fontSize(10);
-    doc.text(`Naam: ${formulier.klant_naam || '—'}`);
-    doc.text(`Adres: ${formulier.klant_adres || '—'}`);
-    doc.text(`Telefoon/e-mail: ${formulier.klant_tel || '—'}`);
-    doc.moveDown(1);
+    sectieTitel(doc, 'Klant');
+    puntenKader(doc, [
+      ['Naam', formulier.klant_naam || '—'],
+      ['Adres', formulier.klant_adres || '—'],
+      ['Telefoon/e-mail', formulier.klant_tel || '—'],
+    ]);
 
-    doc.fontSize(13).text('Formulier', { underline: true });
-    doc.fontSize(10);
+    sectieTitel(doc, 'Formulier');
     const rows = formatAntwoorden(formulier.formulier, formulier.antwoorden);
     if (rows.length === 0) {
       doc.text('(geen velden ingevuld)');
     } else {
-      for (const row of rows) {
-        doc.text(`${row.label}: ${row.waarde}`);
-      }
+      puntenKader(
+        doc,
+        rows.map((r) => [r.label, r.waarde])
+      );
     }
-    doc.moveDown(1);
 
-    doc.fontSize(13).text('Nota', { underline: true });
-    doc.fontSize(10).text(formulier.nota || '—');
+    sectieTitel(doc, 'Nota');
+    doc.text(formulier.nota || '—');
 
+    afwerken(doc);
     doc.end();
   });
 }

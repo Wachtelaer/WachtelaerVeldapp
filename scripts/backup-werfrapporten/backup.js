@@ -5,6 +5,7 @@ const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 const PDFDocument = require('pdfkit');
 const archiver = require('archiver');
+const { tekenHeader, sectieTitel, puntenKader, afwerken } = require('./pdfHuisstijl');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -49,42 +50,38 @@ function formatDeelMet(rapport) {
 
 async function writePdf(pdfPath, rapport, werf, auteurNaam, reacties) {
   await new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ margins: { top: 50, bottom: 75, left: 50, right: 50 }, bufferPages: true });
     const stream = fs.createWriteStream(pdfPath);
     stream.on('finish', resolve);
     stream.on('error', reject);
     doc.pipe(stream);
 
-    doc.fontSize(18).text('Wachtelaer — Werfrapport', { underline: true });
-    doc.moveDown(0.5);
-    doc.fontSize(11).fillColor('#5d5d60').text(`${werf.code} — ${werf.naam}`);
-    doc.text(werf.adres || '—');
-    doc.moveDown(1);
+    tekenHeader(doc, 'Werfrapport', `${werf.code} — ${werf.naam}${werf.adres ? ` · ${werf.adres}` : ''}`);
 
-    doc.fillColor('#1d1f20').fontSize(10);
-    doc.text(`Datum: ${new Date(rapport.datum).toLocaleDateString('nl-BE')}`);
-    doc.text(`Opgesteld door: ${auteurNaam}`);
-    doc.text(`Weer: ${rapport.weer}`);
-    doc.text(`Aanwezig: ${rapport.aanwezig_eigen} eigen, ${rapport.aanwezig_onderaanneming} onderaanneming`);
-    doc.text(`Gedeeld met: ${formatDeelMet(rapport)}`);
-    doc.moveDown(1);
+    puntenKader(doc, [
+      ['Datum', new Date(rapport.datum).toLocaleDateString('nl-BE')],
+      ['Opgesteld door', auteurNaam],
+      ['Weer', rapport.weer],
+      ['Aanwezig', `${rapport.aanwezig_eigen} eigen, ${rapport.aanwezig_onderaanneming} onderaanneming`],
+      ['Gedeeld met', formatDeelMet(rapport)],
+    ]);
 
-    doc.fontSize(13).text('Uitgevoerd', { underline: true });
-    doc.fontSize(10).text(rapport.uitgevoerd || '—');
-    doc.moveDown(1);
+    sectieTitel(doc, 'Uitgevoerd');
+    doc.text(rapport.uitgevoerd || '—');
 
-    doc.fontSize(13).text('Knelpunt', { underline: true });
-    doc.fontSize(10).text(rapport.knelpunt || '—');
+    sectieTitel(doc, 'Knelpunt');
+    doc.text(rapport.knelpunt || '—');
 
     if (reacties.length > 0) {
-      doc.moveDown(1);
-      doc.fontSize(13).text('Reacties', { underline: true });
-      doc.fontSize(10);
-      for (const r of reacties) {
-        doc.text(`${new Date(r.created_at).toLocaleString('nl-BE')} — ${r.auteurNaam}: ${r.tekst}`);
-      }
+      sectieTitel(doc, 'Reacties');
+      puntenKader(
+        doc,
+        reacties.map((r) => [`${new Date(r.created_at).toLocaleString('nl-BE')} — ${r.auteurNaam}`, r.tekst]),
+        { labelBreedte: 190 }
+      );
     }
 
+    afwerken(doc);
     doc.end();
   });
 }

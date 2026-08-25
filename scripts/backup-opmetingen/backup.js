@@ -6,6 +6,7 @@ const { createClient } = require('@supabase/supabase-js');
 const PDFDocument = require('pdfkit');
 const archiver = require('archiver');
 const { moduleNaam, formatAntwoorden } = require('./salesModules');
+const { tekenHeader, sectieTitel, puntenKader, afwerken } = require('./pdfHuisstijl');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -43,44 +44,42 @@ function klantMapNaam(opmeting) {
 
 async function writePdf(pdfPath, opmeting, verkoperNaam) {
   await new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ margins: { top: 50, bottom: 75, left: 50, right: 50 }, bufferPages: true });
     const stream = fs.createWriteStream(pdfPath);
     stream.on('finish', resolve);
     stream.on('error', reject);
     doc.pipe(stream);
 
-    doc.fontSize(18).text('Wachtelaer — Opmeting', { underline: true });
-    doc.moveDown(0.5);
-    doc.fontSize(11).fillColor('#5d5d60').text(moduleNaam(opmeting.module));
-    doc.moveDown(1);
+    tekenHeader(doc, 'Opmeting', moduleNaam(opmeting.module));
 
-    doc.fillColor('#1d1f20').fontSize(10).text(`Datum: ${new Date(opmeting.created_at).toLocaleString('nl-BE')}`);
-    doc.text(`Verkoper: ${verkoperNaam}`);
-    doc.text(`Status: ${opmeting.status}`);
-    doc.moveDown(1);
+    puntenKader(doc, [
+      ['Datum', new Date(opmeting.created_at).toLocaleString('nl-BE')],
+      ['Verkoper', verkoperNaam],
+      ['Status', opmeting.status],
+    ]);
 
-    doc.fontSize(13).text('Klant', { underline: true });
-    doc.fontSize(10);
-    doc.text(`Naam: ${opmeting.klant_naam || '—'}`);
-    doc.text(`Adres: ${opmeting.klant_adres || '—'}`);
-    doc.text(`Telefoon/e-mail: ${opmeting.klant_tel || '—'}`);
-    doc.moveDown(1);
+    sectieTitel(doc, 'Klant');
+    puntenKader(doc, [
+      ['Naam', opmeting.klant_naam || '—'],
+      ['Adres', opmeting.klant_adres || '—'],
+      ['Telefoon/e-mail', opmeting.klant_tel || '—'],
+    ]);
 
-    doc.fontSize(13).text('Opmeting', { underline: true });
-    doc.fontSize(10);
+    sectieTitel(doc, moduleNaam(opmeting.module));
     const rows = formatAntwoorden(opmeting.module, opmeting.antwoorden);
     if (rows.length === 0) {
       doc.text('(geen velden ingevuld)');
     } else {
-      for (const row of rows) {
-        doc.text(`${row.label}: ${row.waarde}`);
-      }
+      puntenKader(
+        doc,
+        rows.map((r) => [r.label, r.waarde])
+      );
     }
-    doc.moveDown(1);
 
-    doc.fontSize(13).text('Wat wil de klant precies?', { underline: true });
-    doc.fontSize(10).text(opmeting.nota || '—');
+    sectieTitel(doc, 'Wat wil de klant precies?');
+    doc.text(opmeting.nota || '—');
 
+    afwerken(doc);
     doc.end();
   });
 }
