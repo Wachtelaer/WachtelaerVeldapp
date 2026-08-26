@@ -184,7 +184,14 @@ export default function PloegScreen() {
             <View key={p.id} style={styles.card}>
               <TouchableOpacity style={styles.cardHead} onPress={() => toggleExpand(p)} accessibilityRole="button">
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.naam}>{p.full_name}</Text>
+                  <View style={styles.naamRow}>
+                    <Text style={styles.naam}>{p.full_name}</Text>
+                    {!p.heeftIngelogd ? (
+                      <View style={styles.statusBadge}>
+                        <Text style={styles.statusBadgeText}>Uitnodiging verstuurd</Text>
+                      </View>
+                    ) : null}
+                  </View>
                   <Text style={styles.meta}>
                     {roleLabels[p.role]}
                     {werfSamenvatting ? ` · ${werfSamenvatting}` : ''}
@@ -343,8 +350,23 @@ const styles = StyleSheet.create({
   success: { fontFamily: fonts.body, color: colors.accentDarker },
   card: { borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.white },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 },
+  naamRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   naam: { fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.ink },
   meta: { fontFamily: fonts.mono, fontSize: 11, color: colors.inkMuted, marginTop: 2 },
+  statusBadge: {
+    borderWidth: 1,
+    borderColor: colors.dividerStrong,
+    backgroundColor: colors.chipBg,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  statusBadgeText: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 9.5,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+    color: colors.inkMuted,
+  },
   editArea: { borderTopWidth: 1, borderTopColor: colors.divider, padding: 12, gap: 10 },
   selfNote: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkMuted, fontStyle: 'italic' },
   saldoRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },

@@ -9,12 +9,14 @@ export interface WerfToewijzing {
 
 export interface ProfielMetWerven extends Profile {
   werven: WerfToewijzing[];
+  heeftIngelogd: boolean;
 }
 
 export async function listProfielen(): Promise<ProfielMetWerven[]> {
-  const [{ data: profiles, error: pErr }, { data: members, error: mErr }] = await Promise.all([
+  const [{ data: profiles, error: pErr }, { data: members, error: mErr }, status] = await Promise.all([
     supabase.from('profiles').select('*').order('full_name'),
     supabase.from('werf_members').select('werf_id, profile_id, is_leider, werven(naam)'),
+    listAangemeldStatus(),
   ]);
   if (pErr) throw pErr;
   if (mErr) throw mErr;
@@ -27,7 +29,27 @@ export async function listProfielen(): Promise<ProfielMetWerven[]> {
     wervenByProfile.set(m.profile_id, list);
   }
 
-  return (profiles ?? []).map((p) => ({ ...p, werven: wervenByProfile.get(p.id) ?? [] }));
+  return (profiles ?? []).map((p) => ({
+    ...p,
+    werven: wervenByProfile.get(p.id) ?? [],
+    heeftIngelogd: status.get(p.id) ?? true,
+  }));
+}
+
+// Whether each employee has accepted their invite (signed in at least
+// once) — a profiles row exists from the moment the invite is sent, so
+// its mere presence doesn't tell us that. Best-effort: if this fails
+// (e.g. the caller isn't management), fall back to treating everyone as
+// already active rather than breaking the whole ploeg screen over it.
+async function listAangemeldStatus(): Promise<Map<string, boolean>> {
+  try {
+    const { data, error } = await supabase.functions.invoke('list-employee-status');
+    if (error) throw error;
+    const status = (data as any)?.status as { id: string; heeftIngelogd: boolean }[] | undefined;
+    return new Map((status ?? []).map((s) => [s.id, s.heeftIngelogd]));
+  } catch {
+    return new Map();
+  }
 }
 
 export async function updateRol(profileId: string, role: Role): Promise<void> {
