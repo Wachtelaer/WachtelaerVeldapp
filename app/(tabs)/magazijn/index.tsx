@@ -4,6 +4,7 @@ import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacit
 import { Ionicons } from '@expo/vector-icons';
 
 import { AppHeader } from '@/components/AppHeader';
+import { PhotoLightbox } from '@/components/PhotoLightbox';
 import { KpiTile, SectionLabel, Tag } from '@/components/ui/Basics';
 import { Button } from '@/components/ui/Button';
 import { ChipGroup, FieldLabel, TextField } from '@/components/ui/Form';
@@ -49,6 +50,7 @@ function OverzichtView() {
   const [onverwerkt, setOnverwerkt] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [lightboxUri, setLightboxUri] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -81,6 +83,7 @@ function OverzichtView() {
   };
 
   return (
+    <>
     <ScrollView contentContainerStyle={styles.body}>
       <View>
         <Text style={styles.title}>Magazijn</Text>
@@ -111,7 +114,7 @@ function OverzichtView() {
           {m.fotos.length > 0 ? (
             <View style={styles.fotoRow}>
               {m.fotos.map((f) => (
-                <MeldingFotoThumb key={f.id} storagePath={f.storage_path} />
+                <MeldingFotoThumb key={f.id} storagePath={f.storage_path} onOpen={setLightboxUri} />
               ))}
             </View>
           ) : null}
@@ -127,6 +130,8 @@ function OverzichtView() {
         </View>
       ))}
     </ScrollView>
+    <PhotoLightbox uri={lightboxUri} onClose={() => setLightboxUri(null)} />
+    </>
   );
 }
 
@@ -282,7 +287,7 @@ function MeldingView() {
   );
 }
 
-function MeldingFotoThumb({ storagePath }: { storagePath: string }) {
+function MeldingFotoThumb({ storagePath, onOpen }: { storagePath: string; onOpen: (uri: string) => void }) {
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -296,9 +301,13 @@ function MeldingFotoThumb({ storagePath }: { storagePath: string }) {
   }, [storagePath]);
 
   return (
-    <View style={styles.fotoThumb}>
+    <TouchableOpacity
+      style={styles.fotoThumb}
+      onPress={() => url && onOpen(url)}
+      disabled={!url}
+      accessibilityRole="button">
       {url ? <Image source={{ uri: url }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
-    </View>
+    </TouchableOpacity>
   );
 }
 
