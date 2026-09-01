@@ -11,7 +11,8 @@ export type FormKey =
   | 'onderhoud_ventilatie'
   | 'recuperatie_koelmiddel'
   | 'druktest_leidingen'
-  | 'opstart_airco';
+  | 'opstart_airco'
+  | 'opstart_warmtepomp';
 
 export interface FormTemplate {
   key: FormKey;
@@ -121,6 +122,36 @@ export const FORM_TEMPLATES: FormTemplate[] = [
       { id: 'extra_vulling', label: 'Extra vulling', kind: 'getal', eenheid: 'g' },
       { id: 'werkspanning', label: 'Werkspanning', kind: 'tekst', ph: 'Bv. 230V' },
       { id: 'afzekering', label: 'Afzekering', kind: 'tekst', ph: 'Bv. 16A' },
+    ],
+  },
+  {
+    key: 'opstart_warmtepomp',
+    naam: 'Opstart lucht/water warmtepomp',
+    sub: 'Indienststelling van een lucht/water warmtepompinstallatie',
+    velden: [
+      { id: 'outdoor_merk', label: 'Buitenunit — merk', kind: 'tekst' },
+      { id: 'outdoor_model', label: 'Buitenunit — model', kind: 'tekst' },
+      { id: 'outdoor_serienummer', label: 'Buitenunit — serienummer', kind: 'tekst' },
+      { id: 'type_systeem', label: 'Type systeem', kind: 'keuze', opties: ['Monobloc', 'Split'] },
+      { id: 'indoor_merk', label: 'Binnenmodule — merk', kind: 'tekst', ph: 'N.v.t. bij monobloc' },
+      { id: 'indoor_model', label: 'Binnenmodule — model', kind: 'tekst', ph: 'N.v.t. bij monobloc' },
+      { id: 'vermogen', label: 'Vermogen', kind: 'getal', eenheid: 'kW' },
+      { id: 'type_gas', label: 'Type koelmiddel', kind: 'keuze', opties: KOELMIDDEL_OPTIES },
+      { id: 'testdruk_systeem', label: 'Testdruk koelcircuit', kind: 'getal', eenheid: 'bar' },
+      { id: 'duur_vacuum', label: 'Duur vacuüm', kind: 'getal', eenheid: 'min' },
+      { id: 'leidinglengte', label: 'Leidinglengte koelcircuit', kind: 'getal', eenheid: 'm', ph: 'N.v.t. bij monobloc' },
+      { id: 'extra_vulling', label: 'Extra koelmiddelvulling', kind: 'getal', eenheid: 'g', ph: 'N.v.t. bij monobloc' },
+      { id: 'waterdruk', label: 'Waterdruk verwarmingscircuit', kind: 'getal', eenheid: 'bar' },
+      { id: 'aanvoertemperatuur', label: 'Aanvoertemperatuur', kind: 'getal', eenheid: '°C' },
+      { id: 'retourtemperatuur', label: 'Retourtemperatuur', kind: 'getal', eenheid: '°C' },
+      { id: 'glycol', label: 'Glycol toegevoegd', kind: 'keuze', opties: JA_NEE },
+      { id: 'buffervat', label: 'Buffervat', kind: 'keuze', opties: ['Aanwezig', 'Niet aanwezig'] },
+      { id: 'type_afgifte', label: 'Type afgifte', kind: 'keuze', opties: ['Vloerverwarming', 'Radiatoren', 'Convectoren', 'Mix'] },
+      { id: 'sanitair_warm_water', label: 'Sanitair warm water via warmtepomp', kind: 'keuze', opties: JA_NEE },
+      { id: 'stooklijn', label: 'Stooklijn ingesteld', kind: 'keuze', opties: JA_NEE },
+      { id: 'werkspanning', label: 'Werkspanning', kind: 'tekst', ph: 'Bv. 230V of 400V' },
+      { id: 'afzekering', label: 'Afzekering', kind: 'tekst', ph: 'Bv. 16A' },
+      { id: 'werking', label: 'Werking getest', kind: 'keuze', opties: ['Goed', 'Gebrek'] },
     ],
   },
 ];

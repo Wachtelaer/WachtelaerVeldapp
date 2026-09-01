@@ -9,6 +9,7 @@ const FORM_NAMES = {
   recuperatie_koelmiddel: 'Recuperatie koelmiddel',
   druktest_leidingen: 'Druktest leidingen',
   opstart_airco: 'Opstart airco',
+  opstart_warmtepomp: 'Opstart lucht/water warmtepomp',
 };
 
 const VELD_LABELS = {
@@ -73,6 +74,31 @@ const VELD_LABELS = {
     extra_vulling: { label: 'Extra vulling', eenheid: 'g' },
     werkspanning: { label: 'Werkspanning' },
     afzekering: { label: 'Afzekering' },
+  },
+  opstart_warmtepomp: {
+    outdoor_merk: { label: 'Buitenunit — merk' },
+    outdoor_model: { label: 'Buitenunit — model' },
+    outdoor_serienummer: { label: 'Buitenunit — serienummer' },
+    type_systeem: { label: 'Type systeem' },
+    indoor_merk: { label: 'Binnenmodule — merk' },
+    indoor_model: { label: 'Binnenmodule — model' },
+    vermogen: { label: 'Vermogen', eenheid: 'kW' },
+    type_gas: { label: 'Type koelmiddel' },
+    testdruk_systeem: { label: 'Testdruk koelcircuit', eenheid: 'bar' },
+    duur_vacuum: { label: 'Duur vacuüm', eenheid: 'min' },
+    leidinglengte: { label: 'Leidinglengte koelcircuit', eenheid: 'm' },
+    extra_vulling: { label: 'Extra koelmiddelvulling', eenheid: 'g' },
+    waterdruk: { label: 'Waterdruk verwarmingscircuit', eenheid: 'bar' },
+    aanvoertemperatuur: { label: 'Aanvoertemperatuur', eenheid: '°C' },
+    retourtemperatuur: { label: 'Retourtemperatuur', eenheid: '°C' },
+    glycol: { label: 'Glycol toegevoegd' },
+    buffervat: { label: 'Buffervat' },
+    type_afgifte: { label: 'Type afgifte' },
+    sanitair_warm_water: { label: 'Sanitair warm water via warmtepomp' },
+    stooklijn: { label: 'Stooklijn ingesteld' },
+    werkspanning: { label: 'Werkspanning' },
+    afzekering: { label: 'Afzekering' },
+    werking: { label: 'Werking getest' },
   },
 };
 
