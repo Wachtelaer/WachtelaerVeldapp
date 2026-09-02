@@ -23,6 +23,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const isPasswordSetupLink =
   Platform.OS === 'web' && typeof window !== 'undefined' && /type=(invite|recovery)/.test(window.location.hash);
 
+// A failed invite/reset link (expired, already clicked once, or consumed
+// early by a corporate email link-scanner before the person themselves
+// clicked it — common with Outlook/M365 "Safe Links") lands back here with
+// #error=...&error_description=... instead of a usable session. Without
+// this, the person silently ends up on the plain sign-in form with no clue
+// why, and understandably guesses at a password they never set — which is
+// exactly the "invalid login credentials" dead end this flags instead.
+export const authLinkError =
+  Platform.OS === 'web' && typeof window !== 'undefined' && /[#&]error=/.test(window.location.hash);
+
 // No generic Database type here: this hand-maintained schema doesn't include
 // full relationship metadata, and supabase-js's typed embedded-resource
 // selects (e.g. `profiles(full_name)`) need that to type-check. The api/

@@ -4,13 +4,17 @@ import { StatusBar } from 'expo-status-bar';
 
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthProvider';
+import { authLinkError } from '@/lib/supabase';
 import { colors, fonts } from '@/lib/theme';
+
+const LINK_ERROR_MESSAGE =
+  'Deze uitnodigings- of wachtwoordlink is niet meer geldig (verlopen, al gebruikt, of te snel geopend door de beveiliging van je mailprogramma). Vraag management om een nieuwe uitnodiging te sturen.';
 
 export default function SignInScreen() {
   const { signInWithPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(authLinkError ? LINK_ERROR_MESSAGE : null);
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async () => {
