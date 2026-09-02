@@ -33,6 +33,15 @@ export const isPasswordSetupLink =
 export const authLinkError =
   Platform.OS === 'web' && typeof window !== 'undefined' && /[#&]error=/.test(window.location.hash);
 
+// Mirrors SITE_URL in supabase/functions/create-employee/index.ts — kept
+// as the same hardcoded literal (not derived from window.location) for the
+// same reason: Supabase's Redirect URLs allowlist has to match this exactly,
+// and a connected Vercel integration keeps overwriting the dashboard's Site
+// URL setting with the wrong (team-scoped, Vercel-protected) domain, so
+// nothing here can safely trust it. Update both places together if the
+// production domain ever changes.
+export const PASSWORD_RESET_REDIRECT = 'https://wachtelaer-veldapp.vercel.app/';
+
 // No generic Database type here: this hand-maintained schema doesn't include
 // full relationship metadata, and supabase-js's typed embedded-resource
 // selects (e.g. `profiles(full_name)`) need that to type-check. The api/
