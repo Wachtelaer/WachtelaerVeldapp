@@ -2,7 +2,7 @@ import * as Crypto from 'expo-crypto';
 
 import { supabase } from '@/lib/supabase';
 import { resolveImageBlob } from '@/lib/photoUpload';
-import type { MagazijnMelding, MagazijnMeldingFoto } from '@/lib/database.types';
+import type { MagazijnMelding, MagazijnMeldingFoto, MagazijnMeldingType } from '@/lib/database.types';
 
 const FOTOS_BUCKET = 'magazijn-fotos';
 
@@ -12,6 +12,7 @@ export interface NieuweMeldingInput {
   tekst: string;
   hoeveelheid: number | null;
   eenheid: string;
+  type: MagazijnMeldingType;
   /** Local file URIs (e.g. from expo-image-picker) to upload alongside the melding. */
   fotoUris: string[];
 }
@@ -25,6 +26,7 @@ export async function createMelding(input: NieuweMeldingInput): Promise<string> 
       tekst: input.tekst,
       hoeveelheid: input.hoeveelheid,
       eenheid: input.eenheid,
+      type: input.type,
     })
     .select('id')
     .single();

@@ -7,7 +7,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
 import { KpiTile, SectionLabel, Tag } from '@/components/ui/Basics';
 import { Button } from '@/components/ui/Button';
-import { ChipGroup, FieldLabel, TextField } from '@/components/ui/Form';
+import { ChipGroup, FieldLabel, Segmented, TextField } from '@/components/ui/Form';
 import { PhotoPicker } from '@/components/PhotoPicker';
 import { useAuth } from '@/context/AuthProvider';
 import { listAlleWerven } from '@/lib/api/werven';
@@ -21,9 +21,15 @@ import {
   type MeldingListItem,
 } from '@/lib/api/magazijn';
 import { enqueueMagazijnMelding, useConnectivity } from '@/lib/offlineQueue';
+import type { MagazijnMeldingType } from '@/lib/database.types';
 import { colors, fonts } from '@/lib/theme';
 
 const GEEN_WERF = 'Geen specifieke werf';
+
+const TYPE_OPTIES: { value: MagazijnMeldingType; label: string }[] = [
+  { value: 'genomen', label: 'Ik neem iets mee' },
+  { value: 'retour', label: 'Ik breng iets terug' },
+];
 
 interface MeldingRegel {
   tekst: string;
@@ -108,6 +114,7 @@ function OverzichtView() {
           </View>
           <Text style={styles.cardTekst}>{m.tekst}</Text>
           <View style={styles.tagRow}>
+            {m.type === 'retour' ? <Tag label="Retour" tone="accent" /> : null}
             {m.hoeveelheid !== null ? <Tag label={`${m.hoeveelheid} ${m.eenheid}`.trim()} /> : null}
             {m.werfNaam ? <Tag label={m.werfNaam} /> : null}
           </View>
@@ -139,6 +146,7 @@ function MeldingView() {
   const { profile } = useAuth();
   const { isOnline } = useConnectivity();
   const [alleWerven, setAlleWerven] = useState<{ id: string; naam: string }[]>([]);
+  const [type, setType] = useState<MagazijnMeldingType>('genomen');
   const [regels, setRegels] = useState<MeldingRegel[]>([{ ...LEGE_REGEL }]);
   const [werfNaam, setWerfNaam] = useState(GEEN_WERF);
   const [fotoUris, setFotoUris] = useState<string[]>([]);
@@ -197,11 +205,13 @@ function MeldingView() {
       tekst,
       hoeveelheid: null,
       eenheid: '',
+      type,
       fotoUris,
     };
     try {
       if (isOnline) await createMelding(payload);
       else await enqueueMagazijnMelding(payload);
+      setType('genomen');
       setRegels([{ ...LEGE_REGEL }]);
       setWerfNaam(GEEN_WERF);
       setFotoUris([]);
@@ -218,14 +228,18 @@ function MeldingView() {
       <View>
         <Text style={styles.title}>Magazijn</Text>
         <Text style={styles.subtitle}>
-          Geef door wat je uit het magazijn hebt meegenomen. De magazijnier ziet dit meteen.
+          {type === 'retour'
+            ? 'Geef door wat je terugbrengt naar het magazijn. De magazijnier ziet dit meteen.'
+            : 'Geef door wat je uit het magazijn hebt meegenomen. De magazijnier ziet dit meteen.'}
         </Text>
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
+      <Segmented options={TYPE_OPTIES} value={type} onChange={setType} />
+
       <View style={{ gap: 8 }}>
-        <FieldLabel>Wat neem je mee</FieldLabel>
+        <FieldLabel>{type === 'retour' ? 'Wat breng je terug' : 'Wat neem je mee'}</FieldLabel>
         {regels.map((regel, i) => (
           <View key={i} style={styles.regelRow}>
             <View style={styles.regelTekst}>
@@ -260,7 +274,7 @@ function MeldingView() {
       </View>
 
       <Button
-        label={isOnline ? 'Melding versturen' : 'Opslaan in wachtrij'}
+        label={isOnline ? (type === 'retour' ? 'Retour versturen' : 'Melding versturen') : 'Opslaan in wachtrij'}
         onPress={submit}
         loading={submitting}
         disabled={gevuldeRegels.length === 0}
@@ -276,7 +290,7 @@ function MeldingView() {
                 {m.tekst}
               </Text>
               <Text style={styles.aanvraagMeta}>
-                {`${formatTijd(m.created_at)}${m.werfNaam ? ` · ${m.werfNaam}` : ''}`}
+                {`${m.type === 'retour' ? 'Retour · ' : ''}${formatTijd(m.created_at)}${m.werfNaam ? ` · ${m.werfNaam}` : ''}`}
               </Text>
             </View>
             <Tag label={m.verwerkt ? 'verwerkt' : 'in wachtrij'} tone={m.verwerkt ? 'accent' : 'neutral'} />

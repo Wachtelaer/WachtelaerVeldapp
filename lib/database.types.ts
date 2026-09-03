@@ -156,6 +156,8 @@ export interface FormulierFoto {
   created_at: string;
 }
 
+export type MagazijnMeldingType = 'genomen' | 'retour';
+
 export interface MagazijnMelding {
   id: string;
   melder_id: string;
@@ -163,6 +165,7 @@ export interface MagazijnMelding {
   tekst: string;
   hoeveelheid: number | null;
   eenheid: string;
+  type: MagazijnMeldingType;
   verwerkt: boolean;
   verwerkt_door: string | null;
   verwerkt_op: string | null;
