@@ -35,6 +35,10 @@ export default function TabsLayout() {
         options={{ title: 'Plannen', tabBarIcon: ({ color, size }) => <Ionicons name="document-text" color={color} size={size} /> }}
       />
       <Tabs.Screen
+        name="todo"
+        options={{ title: 'To do', tabBarIcon: ({ color, size }) => <Ionicons name="checkbox" color={color} size={size} /> }}
+      />
+      <Tabs.Screen
         name="meer"
         options={{ title: 'Meer', tabBarIcon: ({ color, size }) => <Ionicons name="ellipsis-horizontal" color={color} size={size} /> }}
       />

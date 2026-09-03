@@ -179,6 +179,18 @@ export interface MagazijnMeldingFoto {
   created_at: string;
 }
 
+export interface Taak {
+  id: string;
+  titel: string;
+  omschrijving: string;
+  toegewezen_aan: string;
+  aangemaakt_door: string;
+  werf_id: string | null;
+  gedaan: boolean;
+  gedaan_op: string | null;
+  created_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -251,6 +263,11 @@ export interface Database {
         Row: FormulierFoto;
         Insert: Partial<FormulierFoto> & Pick<FormulierFoto, 'formulier_id' | 'storage_path'>;
         Update: Partial<FormulierFoto>;
+      };
+      taken: {
+        Row: Taak;
+        Insert: Partial<Taak> & Pick<Taak, 'titel' | 'toegewezen_aan' | 'aangemaakt_door'>;
+        Update: Partial<Taak>;
       };
     };
   };
