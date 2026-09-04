@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
+import { Image } from 'expo-image';
 import {
   ActivityIndicator,
   Linking,
@@ -28,6 +29,36 @@ interface PendingFile {
   name: string;
   mimeType: string;
   titel: string;
+}
+
+/** A real page-1 preview when the server has rendered one (see
+ *  supabase/functions/plan-thumbnail); the generic file icon otherwise —
+ *  either while that render is still pending, or for non-PDF uploads. */
+function DocThumbnail({ path }: { path: string | null }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!path) {
+      setUrl(null);
+      return;
+    }
+    let alive = true;
+    getPlanUrl(path).then((u) => {
+      if (alive) setUrl(u);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [path]);
+
+  if (url) {
+    return <Image source={{ uri: url }} style={styles.fileIcon} contentFit="cover" />;
+  }
+  return (
+    <View style={styles.fileIcon}>
+      <Ionicons name="document-text-outline" size={20} color={colors.accentDark} />
+    </View>
+  );
 }
 
 export default function PlannenWerfScreen() {
@@ -141,9 +172,7 @@ export default function PlannenWerfScreen() {
               style={styles.docRow}
               onPress={() => openVersie(d.laatsteVersie.storage_path)}
               accessibilityRole="button">
-              <View style={styles.fileIcon}>
-                <Ionicons name="document-text-outline" size={20} color={colors.accentDark} />
-              </View>
+              <DocThumbnail path={d.laatsteVersie.thumbnail_path} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.docTitel} numberOfLines={1}>
                   {d.titel}

@@ -126,6 +126,7 @@ export interface PlanVersie {
   versie_nummer: number;
   storage_path: string;
   bestandsnaam: string;
+  thumbnail_path: string | null;
   geupload_door: string;
   created_at: string;
 }
