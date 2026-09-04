@@ -23,6 +23,13 @@ import { getPlanUrl, listDocumenten, markPlannenRead, uploadPlan, type DocumentM
 import type { Werf } from '@/lib/database.types';
 import { colors, fonts } from '@/lib/theme';
 
+interface PendingFile {
+  uri: string;
+  name: string;
+  mimeType: string;
+  titel: string;
+}
+
 export default function PlannenWerfScreen() {
   const { werfId } = useLocalSearchParams<{ werfId: string }>();
   const { profile } = useAuth();
@@ -33,9 +40,9 @@ export default function PlannenWerfScreen() {
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const [pendingFile, setPendingFile] = useState<{ uri: string; name: string; mimeType: string } | null>(null);
-  const [titel, setTitel] = useState('');
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [voortgang, setVoortgang] = useState<{ done: number; total: number } | null>(null);
   const [alleWerven, setAlleWerven] = useState<{ id: string; naam: string }[]>([]);
   const [doelWerfNaam, setDoelWerfNaam] = useState<string>('');
 
@@ -66,35 +73,53 @@ export default function PlannenWerfScreen() {
     if (url) Linking.openURL(url);
   };
 
-  const pickFile = async () => {
-    const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true, base64: false });
-    if (result.canceled || !result.assets?.[0]) return;
-    const asset = result.assets[0];
-    setPendingFile({ uri: asset.uri, name: asset.name, mimeType: asset.mimeType || 'application/octet-stream' });
-    setTitel(asset.name.replace(/\.[^./]+$/, ''));
+  const pickFiles = async () => {
+    const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true, multiple: true });
+    if (result.canceled || !result.assets?.length) return;
+    setPendingFiles(
+      result.assets.map((a) => ({
+        uri: a.uri,
+        name: a.name,
+        mimeType: a.mimeType || 'application/octet-stream',
+        titel: a.name.replace(/\.[^./]+$/, ''),
+      }))
+    );
     setDoelWerfNaam(werf?.naam ?? alleWerven[0]?.naam ?? '');
+  };
+
+  const updateFileTitel = (index: number, titel: string) => {
+    setPendingFiles((prev) => prev.map((f, i) => (i === index ? { ...f, titel } : f)));
+  };
+
+  const removeFile = (index: number) => {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const confirmUpload = async () => {
     const doelWerf = alleWerven.find((w) => w.naam === doelWerfNaam);
-    if (!pendingFile || !doelWerf || !profile || !titel.trim()) return;
+    if (!doelWerf || !profile || pendingFiles.length === 0 || pendingFiles.some((f) => !f.titel.trim())) return;
     setUploading(true);
+    setVoortgang({ done: 0, total: pendingFiles.length });
     try {
-      await uploadPlan({
-        werfId: doelWerf.id,
-        titel: titel.trim(),
-        fileUri: pendingFile.uri,
-        fileName: pendingFile.name,
-        mimeType: pendingFile.mimeType,
-        geuploadDoor: profile.id,
-      });
-      setPendingFile(null);
-      setTitel('');
+      for (let i = 0; i < pendingFiles.length; i++) {
+        const file = pendingFiles[i];
+        await uploadPlan({
+          werfId: doelWerf.id,
+          titel: file.titel.trim(),
+          fileUri: file.uri,
+          fileName: file.name,
+          mimeType: file.mimeType,
+          geuploadDoor: profile.id,
+        });
+        setVoortgang({ done: i + 1, total: pendingFiles.length });
+      }
+      setPendingFiles([]);
       await load();
     } catch (e: any) {
       setError(e.message ?? 'Uploaden mislukt');
     } finally {
       setUploading(false);
+      setVoortgang(null);
     }
   };
 
@@ -158,42 +183,74 @@ export default function PlannenWerfScreen() {
         ))}
 
         {isMgmt ? (
-          <TouchableOpacity style={styles.addBtn} onPress={pickFile} accessibilityRole="button">
-            <Text style={styles.addBtnText}>+ plan of pdf toevoegen</Text>
+          <TouchableOpacity style={styles.addBtn} onPress={pickFiles} accessibilityRole="button">
+            <Text style={styles.addBtnText}>+ plannen of pdf's toevoegen</Text>
           </TouchableOpacity>
         ) : null}
       </ScrollView>
 
-      <Modal visible={!!pendingFile} transparent animationType="fade" onRequestClose={() => setPendingFile(null)}>
-        <Pressable style={styles.backdrop} onPress={() => setPendingFile(null)}>
+      <Modal visible={pendingFiles.length > 0} transparent animationType="fade" onRequestClose={() => setPendingFiles([])}>
+        <Pressable style={styles.backdrop} onPress={() => setPendingFiles([])}>
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.sheetTitle}>Plan toevoegen</Text>
-            <Text style={styles.sheetFile}>{pendingFile?.name}</Text>
+            <ScrollView contentContainerStyle={{ gap: 10 }}>
+              <Text style={styles.sheetTitle}>{`${pendingFiles.length} document(en) toevoegen`}</Text>
 
-            <FieldLabel>Werf</FieldLabel>
-            <ChipGroup opties={alleWerven.map((w) => w.naam)} value={doelWerfNaam} onChange={(v) => setDoelWerfNaam(v as string)} />
+              <FieldLabel>Werf</FieldLabel>
+              <ChipGroup opties={alleWerven.map((w) => w.naam)} value={doelWerfNaam} onChange={(v) => setDoelWerfNaam(v as string)} />
 
-            <FieldLabel>Titel</FieldLabel>
-            <TextField value={titel} onChangeText={setTitel} placeholder="Titel van het document" />
-            <Text style={styles.sheetHint}>
-              Bestaat er al een document met deze titel op de gekozen werf? Dan wordt dit een nieuwe versie ervan.
-            </Text>
-            <View style={styles.sheetRow}>
-              <TouchableOpacity style={styles.sheetCancel} onPress={() => setPendingFile(null)} accessibilityRole="button">
-                <Text style={styles.sheetCancelText}>Annuleren</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.sheetConfirm, (!titel.trim() || !doelWerfNaam || uploading) && styles.sheetConfirmDisabled]}
-                onPress={confirmUpload}
-                disabled={!titel.trim() || !doelWerfNaam || uploading}
-                accessibilityRole="button">
-                {uploading ? (
-                  <ActivityIndicator color={colors.white} />
-                ) : (
-                  <Text style={styles.sheetConfirmText}>Uploaden</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+              <FieldLabel>Titel per bestand</FieldLabel>
+              {pendingFiles.map((file, i) => (
+                <View key={file.uri + i} style={styles.fileRow}>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <Text style={styles.sheetFile} numberOfLines={1}>
+                      {file.name}
+                    </Text>
+                    <TextField
+                      value={file.titel}
+                      onChangeText={(v) => updateFileTitel(i, v)}
+                      placeholder="Titel van het document"
+                    />
+                  </View>
+                  {pendingFiles.length > 1 ? (
+                    <TouchableOpacity onPress={() => removeFile(i)} accessibilityRole="button" style={styles.fileRemove}>
+                      <Ionicons name="close" size={16} color={colors.inkMuted} />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ))}
+
+              <Text style={styles.sheetHint}>
+                Bestaat er al een document met deze titel op de gekozen werf? Dan wordt dit een nieuwe versie ervan.
+              </Text>
+
+              {voortgang ? (
+                <Text style={styles.sheetHint}>{`Bezig met uploaden: ${voortgang.done}/${voortgang.total}`}</Text>
+              ) : null}
+
+              <View style={styles.sheetRow}>
+                <TouchableOpacity
+                  style={styles.sheetCancel}
+                  onPress={() => setPendingFiles([])}
+                  disabled={uploading}
+                  accessibilityRole="button">
+                  <Text style={styles.sheetCancelText}>Annuleren</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.sheetConfirm,
+                    (pendingFiles.some((f) => !f.titel.trim()) || !doelWerfNaam || uploading) && styles.sheetConfirmDisabled,
+                  ]}
+                  onPress={confirmUpload}
+                  disabled={pendingFiles.some((f) => !f.titel.trim()) || !doelWerfNaam || uploading}
+                  accessibilityRole="button">
+                  {uploading ? (
+                    <ActivityIndicator color={colors.white} />
+                  ) : (
+                    <Text style={styles.sheetConfirmText}>{`Uploaden (${pendingFiles.length})`}</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -240,9 +297,19 @@ const styles = StyleSheet.create({
   },
   addBtnText: { fontFamily: fonts.monoMedium, fontSize: 13, color: colors.accentDark },
   backdrop: { flex: 1, backgroundColor: 'rgba(29,31,32,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  sheet: { width: '100%', maxWidth: 380, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.ink, padding: 16, gap: 10 },
+  sheet: {
+    width: '100%',
+    maxWidth: 380,
+    maxHeight: '85%',
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.ink,
+    padding: 16,
+  },
   sheetTitle: { fontFamily: fonts.heading, fontSize: 18, textTransform: 'uppercase', color: colors.ink },
   sheetFile: { fontFamily: fonts.mono, fontSize: 11, color: colors.inkMuted },
+  fileRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  fileRemove: { width: 32, height: 44, alignItems: 'center', justifyContent: 'center' },
   sheetHint: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkMuted, lineHeight: 16 },
   sheetRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   sheetCancel: {
