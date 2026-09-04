@@ -1,9 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 
+import { useAuth } from '@/context/AuthProvider';
 import { colors, fonts } from '@/lib/theme';
 
+const PLANNING_ROLES = ['mgmt', 'sales', 'werfleider'];
+
 export default function TabsLayout() {
+  const { profile } = useAuth();
+  const canSeePlanning = !!profile && PLANNING_ROLES.includes(profile.role);
+
   return (
     <Tabs
       screenOptions={{
@@ -34,6 +40,12 @@ export default function TabsLayout() {
         name="plannen"
         options={{ title: 'Plannen', tabBarIcon: ({ color, size }) => <Ionicons name="document-text" color={color} size={size} /> }}
       />
+      <Tabs.Protected guard={canSeePlanning}>
+        <Tabs.Screen
+          name="planning"
+          options={{ title: 'Planning', tabBarIcon: ({ color, size }) => <Ionicons name="calendar" color={color} size={size} /> }}
+        />
+      </Tabs.Protected>
       <Tabs.Screen
         name="todo"
         options={{ title: 'To do', tabBarIcon: ({ color, size }) => <Ionicons name="checkbox" color={color} size={size} /> }}
