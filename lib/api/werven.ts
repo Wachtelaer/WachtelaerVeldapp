@@ -1,5 +1,10 @@
+import * as Crypto from 'expo-crypto';
+
 import { supabase } from '@/lib/supabase';
+import { resolveImageBlob } from '@/lib/photoUpload';
 import type { Werf, Werfrapport } from '@/lib/database.types';
+
+const FOTOS_BUCKET = 'werfrapport-fotos';
 
 export interface WerfListItem extends Werf {
   leiderNaam: string | null;
@@ -93,6 +98,34 @@ export async function isLeiderOfWerf(werfId: string, profileId: string): Promise
   return data?.is_leider ?? false;
 }
 
+export async function isMemberOfWerf(werfId: string, profileId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('werf_members')
+    .select('profile_id')
+    .eq('werf_id', werfId)
+    .eq('profile_id', profileId)
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+/** Voegt foto's rechtstreeks aan een werf toe, los van een werfrapport. */
+export async function addWerfFoto(werfId: string, fotoUris: string[]) {
+  for (const uri of fotoUris) {
+    const { blob, ext, contentType } = await resolveImageBlob(uri);
+    const filename = `${Crypto.randomUUID()}.${ext}`;
+    const path = `${werfId}/direct/${filename}`;
+
+    const { error: uploadError } = await supabase.storage.from(FOTOS_BUCKET).upload(path, blob, { contentType });
+    if (uploadError) throw uploadError;
+
+    const { error: rowError } = await supabase
+      .from('werfrapport_fotos')
+      .insert({ werf_id: werfId, storage_path: path, label: filename });
+    if (rowError) throw rowError;
+  }
+}
+
 export async function listRapportenForWerf(werfId: string): Promise<
   (Werfrapport & { auteurNaam: string })[]
 > {
@@ -109,8 +142,8 @@ export async function listRapportenForWerf(werfId: string): Promise<
 export async function listRecentFotosForWerf(werfId: string, limit = 6) {
   const { data, error } = await supabase
     .from('werfrapport_fotos')
-    .select('id, storage_path, label, created_at, werfrapporten!inner(werf_id)')
-    .eq('werfrapporten.werf_id', werfId)
+    .select('id, storage_path, label, created_at')
+    .eq('werf_id', werfId)
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) throw error;

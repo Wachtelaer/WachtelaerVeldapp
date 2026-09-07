@@ -47,7 +47,8 @@ export interface Werfrapport {
 
 export interface WerfrapportFoto {
   id: string;
-  rapport_id: string;
+  rapport_id: string | null;
+  werf_id: string | null;
   storage_path: string;
   label: string;
   created_at: string;
@@ -205,7 +206,7 @@ export interface Database {
       };
       werfrapport_fotos: {
         Row: WerfrapportFoto;
-        Insert: Partial<WerfrapportFoto> & Pick<WerfrapportFoto, 'rapport_id' | 'storage_path'>;
+        Insert: Partial<WerfrapportFoto> & Pick<WerfrapportFoto, 'storage_path'>;
         Update: Partial<WerfrapportFoto>;
       };
       werfrapport_reacties: {

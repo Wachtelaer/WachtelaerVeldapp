@@ -14,11 +14,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '@/components/AppHeader';
 import { BackRow, SectionLabel } from '@/components/ui/Basics';
 import { Button } from '@/components/ui/Button';
+import { PhotoPicker } from '@/components/PhotoPicker';
 import { RemotePhotoGrid } from '@/components/PhotoGrid';
 import { useAuth } from '@/context/AuthProvider';
 import {
+  addWerfFoto,
   getWerf,
   isLeiderOfWerf,
+  isMemberOfWerf,
   listRapportenForWerf,
   listRecentFotosForWerf,
 } from '@/lib/api/werven';
@@ -31,29 +34,53 @@ export default function WerfDetailScreen() {
 
   const [werf, setWerf] = useState<Werf | null>(null);
   const [isLeider, setIsLeider] = useState(false);
+  const [isMember, setIsMember] = useState(false);
   const [rapporten, setRapporten] = useState<(Werfrapport & { auteurNaam: string })[]>([]);
   const [fotos, setFotos] = useState<WerfrapportFoto[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingFotoUris, setPendingFotoUris] = useState<string[]>([]);
+  const [uploadingFotos, setUploadingFotos] = useState(false);
+  const [fotoError, setFotoError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!werfId || !profile) return;
     try {
       setError(null);
-      const [w, leider, r, f] = await Promise.all([
+      const [w, leider, member, r, f] = await Promise.all([
         getWerf(werfId),
         isLeiderOfWerf(werfId, profile.id),
+        isMemberOfWerf(werfId, profile.id),
         listRapportenForWerf(werfId),
         listRecentFotosForWerf(werfId, 6),
       ]);
       setWerf(w);
       setIsLeider(leider || profile.role === 'mgmt');
+      setIsMember(member);
       setRapporten(r);
       setFotos(f as any);
     } catch (e: any) {
       setError(e.message ?? 'Kon werf niet laden');
     }
   }, [werfId, profile]);
+
+  const isMgmt = profile?.role === 'mgmt';
+  const kanFotosToevoegen = isMgmt || isMember;
+
+  const submitFotos = async () => {
+    if (!werf || pendingFotoUris.length === 0) return;
+    setUploadingFotos(true);
+    setFotoError(null);
+    try {
+      await addWerfFoto(werf.id, pendingFotoUris);
+      setPendingFotoUris([]);
+      await load();
+    } catch (e: any) {
+      setFotoError(e.message ?? "Kon foto niet toevoegen");
+    } finally {
+      setUploadingFotos(false);
+    }
+  };
 
   useEffect(() => {
     load();
@@ -139,6 +166,20 @@ export default function WerfDetailScreen() {
             <View>
               <SectionLabel>Recente foto's</SectionLabel>
               <RemotePhotoGrid fotos={fotos} />
+              {kanFotosToevoegen ? (
+                <View style={styles.fotoToevoegen}>
+                  <PhotoPicker uris={pendingFotoUris} onChange={setPendingFotoUris} />
+                  {fotoError ? <Text style={styles.error}>{fotoError}</Text> : null}
+                  {pendingFotoUris.length > 0 ? (
+                    <Button
+                      label={uploadingFotos ? 'Bezig…' : "Foto's toevoegen"}
+                      onPress={submitFotos}
+                      disabled={uploadingFotos}
+                      loading={uploadingFotos}
+                    />
+                  ) : null}
+                </View>
+              ) : null}
             </View>
           </>
         ) : null}
@@ -188,4 +229,5 @@ const styles = StyleSheet.create({
   rapportTitel: { fontFamily: fonts.heading, fontSize: 15, textTransform: 'uppercase', color: colors.ink },
   rapportKort: { fontFamily: fonts.body, fontSize: 12, color: colors.inkMuted, marginTop: 2 },
   empty: { fontFamily: fonts.body, fontSize: 13, color: colors.inkMuted },
+  fotoToevoegen: { marginTop: 12, gap: 8 },
 });
