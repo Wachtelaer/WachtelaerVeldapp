@@ -164,7 +164,7 @@ export default function WervenHomeScreen() {
           </View>
         ) : null}
 
-        {isMgmt ? <Button label="+ nieuwe werf" variant="secondary" onPress={openAdd} /> : null}
+        {isMgmt || isWerfleider ? <Button label="+ nieuwe werf" variant="secondary" onPress={openAdd} /> : null}
 
         {isWerfleider && eigenWerven.length === 1 ? (
           <Button
