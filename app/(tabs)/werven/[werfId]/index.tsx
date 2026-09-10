@@ -16,7 +16,9 @@ import { BackRow, SectionLabel } from '@/components/ui/Basics';
 import { Button } from '@/components/ui/Button';
 import { PhotoPicker } from '@/components/PhotoPicker';
 import { RemotePhotoGrid } from '@/components/PhotoGrid';
+import { TaakCard } from '@/components/TaakCard';
 import { useAuth } from '@/context/AuthProvider';
+import { listTakenVoorWerf, zetGedaan, type TaakListItem } from '@/lib/api/taken';
 import {
   addWerfFoto,
   getWerf,
@@ -37,6 +39,8 @@ export default function WerfDetailScreen() {
   const [isMember, setIsMember] = useState(false);
   const [rapporten, setRapporten] = useState<(Werfrapport & { auteurNaam: string })[]>([]);
   const [fotos, setFotos] = useState<WerfrapportFoto[]>([]);
+  const [taken, setTaken] = useState<TaakListItem[]>([]);
+  const [takenBusyId, setTakenBusyId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingFotoUris, setPendingFotoUris] = useState<string[]>([]);
@@ -47,22 +51,37 @@ export default function WerfDetailScreen() {
     if (!werfId || !profile) return;
     try {
       setError(null);
-      const [w, leider, member, r, f] = await Promise.all([
+      const [w, leider, member, r, f, t] = await Promise.all([
         getWerf(werfId),
         isLeiderOfWerf(werfId, profile.id),
         isMemberOfWerf(werfId, profile.id),
         listRapportenForWerf(werfId),
         listRecentFotosForWerf(werfId, 6),
+        listTakenVoorWerf(werfId),
       ]);
       setWerf(w);
       setIsLeider(leider || profile.role === 'mgmt');
       setIsMember(member);
       setRapporten(r);
       setFotos(f as any);
+      setTaken(t);
     } catch (e: any) {
       setError(e.message ?? 'Kon werf niet laden');
     }
   }, [werfId, profile]);
+
+  const toggleTaak = async (taak: TaakListItem) => {
+    if (!profile) return;
+    setTakenBusyId(taak.id);
+    try {
+      await zetGedaan(taak.id, !taak.gedaan, profile.id);
+      await load();
+    } catch (e: any) {
+      setError(e.message ?? 'Kon taak niet bijwerken');
+    } finally {
+      setTakenBusyId(null);
+    }
+  };
 
   const isMgmt = profile?.role === 'mgmt';
   const kanFotosToevoegen = isMgmt || isMember;
@@ -164,6 +183,26 @@ export default function WerfDetailScreen() {
             </View>
 
             <View>
+              <SectionLabel>To do</SectionLabel>
+              {taken.length === 0 ? (
+                <Text style={styles.empty}>Nog geen taken voor deze werf.</Text>
+              ) : (
+                <View style={styles.takenLijst}>
+                  {taken.map((t) => (
+                    <TaakCard
+                      key={t.id}
+                      taak={t}
+                      toonToegewezenAan
+                      toonWerf={false}
+                      busy={takenBusyId === t.id}
+                      onToggle={() => toggleTaak(t)}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <View>
               <SectionLabel>Recente foto's</SectionLabel>
               <RemotePhotoGrid fotos={fotos} />
               {kanFotosToevoegen ? (
@@ -230,4 +269,5 @@ const styles = StyleSheet.create({
   rapportKort: { fontFamily: fonts.body, fontSize: 12, color: colors.inkMuted, marginTop: 2 },
   empty: { fontFamily: fonts.body, fontSize: 13, color: colors.inkMuted },
   fotoToevoegen: { marginTop: 12, gap: 8 },
+  takenLijst: { gap: 8 },
 });

@@ -66,6 +66,18 @@ export async function listMijnTaken(profielId: string): Promise<TaakListItem[]> 
   return (data ?? []).map(mapRow);
 }
 
+/** Alle taken gekoppeld aan een werf — voor de to-do-lijst op de werfpagina. */
+export async function listTakenVoorWerf(werfId: string): Promise<TaakListItem[]> {
+  const { data, error } = await supabase
+    .from('taken')
+    .select(SELECT)
+    .eq('werf_id', werfId)
+    .order('gedaan', { ascending: true })
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(mapRow);
+}
+
 /** Every taak — for management's overview. */
 export async function listAlleTaken(): Promise<TaakListItem[]> {
   const { data, error } = await supabase
