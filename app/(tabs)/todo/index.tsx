@@ -20,6 +20,8 @@ import {
 import { colors, fonts } from '@/lib/theme';
 
 const GEEN_WERF = 'Geen specifieke werf';
+const TOEWIJS_MEDEWERKER = 'Medewerker';
+const TOEWIJS_WERF = 'Hele werf';
 
 export default function TodoScreen() {
   const { profile } = useAuth();
@@ -47,7 +49,11 @@ function TaakCard({
   onDelete?: () => void;
 }) {
   const metaBits = [
-    toonToegewezenAan ? taak.toegewezenAanNaam : `door ${taak.aangemaaktDoorNaam}`,
+    toonToegewezenAan
+      ? (taak.toegewezenAanNaam ?? 'Hele werf')
+      : taak.toegewezenAanNaam === null
+        ? 'Gedeeld met werf'
+        : `door ${taak.aangemaaktDoorNaam}`,
     taak.werfNaam,
     formatDatum(taak.created_at),
   ].filter(Boolean);
@@ -118,7 +124,7 @@ function MijnTakenView() {
     <ScrollView contentContainerStyle={styles.body}>
       <View>
         <Text style={styles.title}>To do</Text>
-        <Text style={styles.subtitle}>Taken die management aan jou heeft toegewezen.</Text>
+        <Text style={styles.subtitle}>Taken die management aan jou of je werf heeft toegewezen.</Text>
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -152,6 +158,7 @@ function BeheerView() {
   const [addOpen, setAddOpen] = useState(false);
   const [titel, setTitel] = useState('');
   const [omschrijving, setOmschrijving] = useState('');
+  const [toewijsType, setToewijsType] = useState(TOEWIJS_MEDEWERKER);
   const [toegewezenAanNaam, setToegewezenAanNaam] = useState('');
   const [werfNaam, setWerfNaam] = useState(GEEN_WERF);
   const [adding, setAdding] = useState(false);
@@ -202,6 +209,7 @@ function BeheerView() {
   const openAdd = () => {
     setTitel('');
     setOmschrijving('');
+    setToewijsType(TOEWIJS_MEDEWERKER);
     setToegewezenAanNaam(profielen[0]?.naam ?? '');
     setWerfNaam(GEEN_WERF);
     setAddError(null);
@@ -210,24 +218,40 @@ function BeheerView() {
 
   const submitAdd = async () => {
     if (!profile) return;
-    const toegewezenAan = profielen.find((p) => p.naam === toegewezenAanNaam);
     if (!titel.trim()) {
       setAddError('Vul een titel in');
       return;
     }
-    if (!toegewezenAan) {
-      setAddError('Kies aan wie je deze taak toewijst');
-      return;
+
+    let toegewezenAan: string | null = null;
+    let werfId: string | null = null;
+
+    if (toewijsType === TOEWIJS_WERF) {
+      const werf = werven.find((w) => w.naam === werfNaam);
+      if (!werf) {
+        setAddError('Kies voor welke werf deze taak is');
+        return;
+      }
+      werfId = werf.id;
+    } else {
+      const toegewezenAanProfiel = profielen.find((p) => p.naam === toegewezenAanNaam);
+      if (!toegewezenAanProfiel) {
+        setAddError('Kies aan wie je deze taak toewijst');
+        return;
+      }
+      toegewezenAan = toegewezenAanProfiel.id;
+      const werf = werven.find((w) => w.naam === werfNaam);
+      werfId = werf?.id ?? null;
     }
+
     setAdding(true);
     setAddError(null);
     try {
-      const werf = werven.find((w) => w.naam === werfNaam);
       await createTaak({
         titel: titel.trim(),
         omschrijving: omschrijving.trim(),
-        toegewezenAan: toegewezenAan.id,
-        werfId: werf?.id ?? null,
+        toegewezenAan,
+        werfId,
         aangemaaktDoor: profile.id,
       });
       setAddOpen(false);
@@ -286,19 +310,44 @@ function BeheerView() {
               <FieldLabel>Omschrijving (optioneel)</FieldLabel>
               <TextArea value={omschrijving} onChangeText={setOmschrijving} placeholder="Extra details" />
 
-              <FieldLabel>Toegewezen aan</FieldLabel>
-              <ChipGroup opties={profielen.map((p) => p.naam)} value={toegewezenAanNaam} onChange={(v) => setToegewezenAanNaam(v as string)} />
+              <FieldLabel>Toewijzen aan</FieldLabel>
+              <ChipGroup
+                opties={[TOEWIJS_MEDEWERKER, TOEWIJS_WERF]}
+                value={toewijsType}
+                onChange={(v) => {
+                  setToewijsType(v as string);
+                  if (v === TOEWIJS_WERF && werfNaam === GEEN_WERF) {
+                    setWerfNaam(werven[0]?.naam ?? GEEN_WERF);
+                  }
+                }}
+              />
 
-              {werven.length > 0 ? (
+              {toewijsType === TOEWIJS_MEDEWERKER ? (
                 <>
-                  <FieldLabel>Werf (optioneel)</FieldLabel>
+                  <FieldLabel>Medewerker</FieldLabel>
+                  <ChipGroup opties={profielen.map((p) => p.naam)} value={toegewezenAanNaam} onChange={(v) => setToegewezenAanNaam(v as string)} />
+
+                  {werven.length > 0 ? (
+                    <>
+                      <FieldLabel>Werf (optioneel)</FieldLabel>
+                      <ChipGroup
+                        opties={[GEEN_WERF, ...werven.map((w) => w.naam)]}
+                        value={werfNaam}
+                        onChange={(v) => setWerfNaam(v as string)}
+                      />
+                    </>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <FieldLabel>Werf</FieldLabel>
                   <ChipGroup
-                    opties={[GEEN_WERF, ...werven.map((w) => w.naam)]}
-                    value={werfNaam}
+                    opties={werven.map((w) => w.naam)}
+                    value={werfNaam === GEEN_WERF ? '' : werfNaam}
                     onChange={(v) => setWerfNaam(v as string)}
                   />
                 </>
-              ) : null}
+              )}
 
               {addError ? <Text style={styles.error}>{addError}</Text> : null}
 

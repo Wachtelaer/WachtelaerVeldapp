@@ -2,7 +2,8 @@ import { supabase } from '@/lib/supabase';
 import type { Taak } from '@/lib/database.types';
 
 export interface TaakListItem extends Taak {
-  toegewezenAanNaam: string;
+  /** null wanneer de taak aan een hele werf is toegewezen (gedeeld tussen alle leden). */
+  toegewezenAanNaam: string | null;
   aangemaaktDoorNaam: string;
   werfNaam: string | null;
 }
@@ -10,7 +11,7 @@ export interface TaakListItem extends Taak {
 function mapRow(r: any): TaakListItem {
   return {
     ...r,
-    toegewezenAanNaam: r.toegewezen_aan_profile?.full_name ?? 'Onbekend',
+    toegewezenAanNaam: r.toegewezen_aan ? (r.toegewezen_aan_profile?.full_name ?? 'Onbekend') : null,
     aangemaaktDoorNaam: r.aangemaakt_door_profile?.full_name ?? 'Onbekend',
     werfNaam: r.werven?.naam ?? null,
   };
@@ -22,7 +23,8 @@ const SELECT =
 export interface NieuweTaakInput {
   titel: string;
   omschrijving: string;
-  toegewezenAan: string;
+  /** null = toegewezen aan de hele werf (werfId is dan verplicht) in plaats van één medewerker. */
+  toegewezenAan: string | null;
   werfId: string | null;
   aangemaaktDoor: string;
 }
@@ -38,12 +40,24 @@ export async function createTaak(input: NieuweTaakInput): Promise<void> {
   if (error) throw error;
 }
 
-/** My own taken, open ones first — for the employee's "To do" view. */
+/** Mijn eigen taken, plus gedeelde taken van werven waar ik lid van ben. */
 export async function listMijnTaken(profielId: string): Promise<TaakListItem[]> {
+  const { data: memberships, error: mErr } = await supabase
+    .from('werf_members')
+    .select('werf_id')
+    .eq('profile_id', profielId);
+  if (mErr) throw mErr;
+  const werfIds = (memberships ?? []).map((m) => m.werf_id);
+
+  const orParts = [`toegewezen_aan.eq.${profielId}`];
+  if (werfIds.length > 0) {
+    orParts.push(`and(toegewezen_aan.is.null,werf_id.in.(${werfIds.join(',')}))`);
+  }
+
   const { data, error } = await supabase
     .from('taken')
     .select(SELECT)
-    .eq('toegewezen_aan', profielId)
+    .or(orParts.join(','))
     .order('gedaan', { ascending: true })
     .order('created_at', { ascending: false });
   if (error) throw error;
