@@ -5,6 +5,7 @@ export interface TaakListItem extends Taak {
   /** null wanneer de taak aan een hele werf is toegewezen (gedeeld tussen alle leden). */
   toegewezenAanNaam: string | null;
   aangemaaktDoorNaam: string;
+  gedaanDoorNaam: string | null;
   werfNaam: string | null;
 }
 
@@ -13,12 +14,13 @@ function mapRow(r: any): TaakListItem {
     ...r,
     toegewezenAanNaam: r.toegewezen_aan ? (r.toegewezen_aan_profile?.full_name ?? 'Onbekend') : null,
     aangemaaktDoorNaam: r.aangemaakt_door_profile?.full_name ?? 'Onbekend',
+    gedaanDoorNaam: r.gedaan_door_profile?.full_name ?? null,
     werfNaam: r.werven?.naam ?? null,
   };
 }
 
 const SELECT =
-  '*, toegewezen_aan_profile:profiles!toegewezen_aan(full_name), aangemaakt_door_profile:profiles!aangemaakt_door(full_name), werven(naam)';
+  '*, toegewezen_aan_profile:profiles!toegewezen_aan(full_name), aangemaakt_door_profile:profiles!aangemaakt_door(full_name), gedaan_door_profile:profiles!gedaan_door(full_name), werven(naam)';
 
 export interface NieuweTaakInput {
   titel: string;
@@ -75,10 +77,14 @@ export async function listAlleTaken(): Promise<TaakListItem[]> {
   return (data ?? []).map(mapRow);
 }
 
-export async function zetGedaan(id: string, gedaan: boolean): Promise<void> {
+export async function zetGedaan(id: string, gedaan: boolean, doorId: string): Promise<void> {
   const { error } = await supabase
     .from('taken')
-    .update(gedaan ? { gedaan: true, gedaan_op: new Date().toISOString() } : { gedaan: false, gedaan_op: null })
+    .update(
+      gedaan
+        ? { gedaan: true, gedaan_op: new Date().toISOString(), gedaan_door: doorId }
+        : { gedaan: false, gedaan_op: null, gedaan_door: null }
+    )
     .eq('id', id);
   if (error) throw error;
 }

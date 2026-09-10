@@ -190,6 +190,7 @@ export interface Taak {
   werf_id: string | null;
   gedaan: boolean;
   gedaan_op: string | null;
+  gedaan_door: string | null;
   created_at: string;
 }
 

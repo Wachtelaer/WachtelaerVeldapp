@@ -48,13 +48,11 @@ function TaakCard({
   onToggle: () => void;
   onDelete?: () => void;
 }) {
+  const isWerfTaak = taak.toegewezenAanNaam === null;
   const metaBits = [
-    toonToegewezenAan
-      ? (taak.toegewezenAanNaam ?? 'Hele werf')
-      : taak.toegewezenAanNaam === null
-        ? 'Gedeeld met werf'
-        : `door ${taak.aangemaaktDoorNaam}`,
+    toonToegewezenAan ? (taak.toegewezenAanNaam ?? 'Hele werf') : isWerfTaak ? 'Gedeeld met werf' : `door ${taak.aangemaaktDoorNaam}`,
     taak.werfNaam,
+    isWerfTaak && taak.gedaan && taak.gedaanDoorNaam ? `afgevinkt door ${taak.gedaanDoorNaam}` : null,
     formatDatum(taak.created_at),
   ].filter(Boolean);
 
@@ -106,9 +104,10 @@ function MijnTakenView() {
   );
 
   const toggle = async (taak: TaakListItem) => {
+    if (!profile) return;
     setBusyId(taak.id);
     try {
-      await zetGedaan(taak.id, !taak.gedaan);
+      await zetGedaan(taak.id, !taak.gedaan, profile.id);
       await load();
     } catch (e: any) {
       setError(e.message ?? 'Kon taak niet bijwerken');
@@ -183,9 +182,10 @@ function BeheerView() {
   );
 
   const toggle = async (taak: TaakListItem) => {
+    if (!profile) return;
     setBusyId(taak.id);
     try {
-      await zetGedaan(taak.id, !taak.gedaan);
+      await zetGedaan(taak.id, !taak.gedaan, profile.id);
       await load();
     } catch (e: any) {
       setError(e.message ?? 'Kon taak niet bijwerken');
