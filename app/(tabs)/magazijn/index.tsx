@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -57,6 +57,7 @@ function OverzichtView() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -102,6 +103,10 @@ function OverzichtView() {
         <KpiTile value={String(meldingen?.length ?? 0)} label="totaal" />
       </View>
 
+      <TouchableOpacity style={styles.addBtn} onPress={() => setAddOpen(true)} accessibilityRole="button">
+        <Text style={styles.addBtnText}>+ nieuwe melding</Text>
+      </TouchableOpacity>
+
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {meldingen === null && !error ? <ActivityIndicator color={colors.accent} style={{ marginTop: 24 }} /> : null}
       {meldingen?.length === 0 ? <Text style={styles.empty}>Nog geen meldingen.</Text> : null}
@@ -138,11 +143,27 @@ function OverzichtView() {
       ))}
     </ScrollView>
     <PhotoLightbox uri={lightboxUri} onClose={() => setLightboxUri(null)} />
+
+    <Modal visible={addOpen} transparent animationType="fade" onRequestClose={() => setAddOpen(false)}>
+      <Pressable style={styles.backdrop} onPress={() => setAddOpen(false)}>
+        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <ScrollView contentContainerStyle={{ gap: 12 }}>
+            <Text style={styles.sheetTitle}>Nieuwe melding</Text>
+            <NieuweMeldingForm
+              onSubmitted={() => {
+                setAddOpen(false);
+                load();
+              }}
+            />
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
     </>
   );
 }
 
-function MeldingView() {
+function NieuweMeldingForm({ onSubmitted }: { onSubmitted: () => void }) {
   const { profile } = useAuth();
   const { isOnline } = useConnectivity();
   const [alleWerven, setAlleWerven] = useState<{ id: string; naam: string }[]>([]);
@@ -150,29 +171,12 @@ function MeldingView() {
   const [regels, setRegels] = useState<MeldingRegel[]>([{ ...LEGE_REGEL }]);
   const [werfNaam, setWerfNaam] = useState(GEEN_WERF);
   const [fotoUris, setFotoUris] = useState<string[]>([]);
-  const [mijnMeldingen, setMijnMeldingen] = useState<MeldingListItem[] | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    if (!profile) return;
-    try {
-      setError(null);
-      setMijnMeldingen(await listMijnMeldingen(profile.id));
-    } catch (e: any) {
-      setError(e.message ?? 'Kon meldingen niet laden');
-    }
-  }, [profile]);
 
   useEffect(() => {
     listAlleWerven().then(setAlleWerven);
   }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
 
   const gevuldeRegels = regels.filter((r) => r.tekst.trim());
 
@@ -215,7 +219,7 @@ function MeldingView() {
       setRegels([{ ...LEGE_REGEL }]);
       setWerfNaam(GEEN_WERF);
       setFotoUris([]);
-      await load();
+      onSubmitted();
     } catch (e: any) {
       setError(e.message ?? 'Melding versturen mislukt');
     } finally {
@@ -224,16 +228,7 @@ function MeldingView() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.body}>
-      <View>
-        <Text style={styles.title}>Magazijn</Text>
-        <Text style={styles.subtitle}>
-          {type === 'retour'
-            ? 'Geef door wat je terugbrengt naar het magazijn. De magazijnier ziet dit meteen.'
-            : 'Geef door wat je uit het magazijn hebt meegenomen. De magazijnier ziet dit meteen.'}
-        </Text>
-      </View>
-
+    <View style={{ gap: 16 }}>
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <Segmented options={TYPE_OPTIES} value={type} onChange={setType} />
@@ -279,6 +274,41 @@ function MeldingView() {
         loading={submitting}
         disabled={gevuldeRegels.length === 0}
       />
+    </View>
+  );
+}
+
+function MeldingView() {
+  const { profile } = useAuth();
+  const [mijnMeldingen, setMijnMeldingen] = useState<MeldingListItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!profile) return;
+    try {
+      setError(null);
+      setMijnMeldingen(await listMijnMeldingen(profile.id));
+    } catch (e: any) {
+      setError(e.message ?? 'Kon meldingen niet laden');
+    }
+  }, [profile]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  return (
+    <ScrollView contentContainerStyle={styles.body}>
+      <View>
+        <Text style={styles.title}>Magazijn</Text>
+        <Text style={styles.subtitle}>Geef door wat je uit het magazijn neemt of terugbrengt. De magazijnier ziet dit meteen.</Text>
+      </View>
+
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <NieuweMeldingForm onSubmitted={load} />
 
       <View>
         <SectionLabel>Mijn meldingen</SectionLabel>
@@ -344,6 +374,18 @@ const styles = StyleSheet.create({
   title: { fontFamily: fonts.heading, fontSize: 24, textTransform: 'uppercase', color: colors.ink },
   subtitle: { fontFamily: fonts.body, fontSize: 13, color: colors.inkMuted, marginTop: 5, lineHeight: 19 },
   error: { fontFamily: fonts.body, fontSize: 13, color: colors.danger },
+  addBtn: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.dividerStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBtnText: { fontFamily: fonts.monoMedium, fontSize: 13, color: colors.accentDark },
+  backdrop: { flex: 1, backgroundColor: 'rgba(29,31,32,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  sheet: { width: '100%', maxWidth: 380, maxHeight: '85%', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.ink, padding: 16 },
+  sheetTitle: { fontFamily: fonts.heading, fontSize: 18, textTransform: 'uppercase', color: colors.ink },
   empty: {
     fontFamily: fonts.body,
     fontSize: 13,
