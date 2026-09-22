@@ -18,7 +18,7 @@ import { KpiTile, SectionLabel, Tag } from '@/components/ui/Basics';
 import { Button } from '@/components/ui/Button';
 import { ChipGroup, FieldLabel, TextField } from '@/components/ui/Form';
 import { useAuth } from '@/context/AuthProvider';
-import { createWerf, deleteWerf, listWervenWithSummary, type WerfListItem } from '@/lib/api/werven';
+import { createWerf, deleteWerf, listWervenWithSummary, setWerfGearchiveerd, type WerfListItem } from '@/lib/api/werven';
 import { listOpmetingen, type OpmetingListItem } from '@/lib/api/opmetingen';
 import { getModule, summarizeAntwoorden } from '@/lib/salesModules';
 import { colors, fonts, roleLabels } from '@/lib/theme';
@@ -44,6 +44,10 @@ export default function WervenHomeScreen() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [archiveTarget, setArchiveTarget] = useState<WerfListItem | null>(null);
+  const [archiving, setArchiving] = useState(false);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
 
   const isSales = profile?.role === 'sales';
   const isMgmt = profile?.role === 'mgmt';
@@ -116,6 +120,11 @@ export default function WervenHomeScreen() {
     setDeleteError(null);
   };
 
+  const openArchive = (w: WerfListItem) => {
+    setArchiveTarget(w);
+    setArchiveError(null);
+  };
+
   const submitDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -128,6 +137,21 @@ export default function WervenHomeScreen() {
       setDeleteError(e.message ?? 'Kon werf niet verwijderen');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const submitArchive = async () => {
+    if (!archiveTarget) return;
+    setArchiving(true);
+    setArchiveError(null);
+    try {
+      await setWerfGearchiveerd(archiveTarget.id, true);
+      setArchiveTarget(null);
+      await load();
+    } catch (e: any) {
+      setArchiveError(e.message ?? 'Kon werf niet archiveren');
+    } finally {
+      setArchiving(false);
     }
   };
 
@@ -235,13 +259,14 @@ export default function WervenHomeScreen() {
                 </TouchableOpacity>
 
                 {isMgmt ? (
-                  <TouchableOpacity
-                    style={styles.deleteBtn}
-                    onPress={() => openDelete(w)}
-                    accessibilityRole="button"
-                    hitSlop={8}>
-                    <Ionicons name="trash-outline" size={16} color={colors.danger} />
-                  </TouchableOpacity>
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity onPress={() => openArchive(w)} accessibilityRole="button" hitSlop={8}>
+                      <Ionicons name="archive-outline" size={16} color={colors.inkMuted} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => openDelete(w)} accessibilityRole="button" hitSlop={8}>
+                      <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                    </TouchableOpacity>
+                  </View>
                 ) : null}
               </View>
             ))}
@@ -250,6 +275,12 @@ export default function WervenHomeScreen() {
 
         {werven && werven.length === 0 ? (
           <Text style={styles.empty}>Je bent nog aan geen enkele werf toegewezen.</Text>
+        ) : null}
+
+        {isMgmt ? (
+          <TouchableOpacity onPress={() => router.push('/werven/archief')} accessibilityRole="button">
+            <Text style={styles.archiefLink}>Gearchiveerde werven bekijken</Text>
+          </TouchableOpacity>
         ) : null}
       </ScrollView>
 
@@ -325,6 +356,34 @@ export default function WervenHomeScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <Modal visible={!!archiveTarget} transparent animationType="fade" onRequestClose={() => setArchiveTarget(null)}>
+        <Pressable style={styles.backdrop} onPress={() => setArchiveTarget(null)}>
+          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.sheetTitle}>Werf archiveren</Text>
+            <Text style={styles.sheetWarning}>
+              <Text style={styles.sheetWarningBold}>{archiveTarget?.naam}</Text> verdwijnt uit deze lijst en is niet
+              langer zichtbaar voor de werfleden — alle gegevens blijven bewaard. Je kan de werf later terugzetten via
+              het archief.
+            </Text>
+
+            {archiveError ? <Text style={styles.error}>{archiveError}</Text> : null}
+
+            <View style={styles.sheetRow}>
+              <TouchableOpacity style={styles.sheetCancel} onPress={() => setArchiveTarget(null)} accessibilityRole="button">
+                <Text style={styles.sheetCancelText}>Annuleren</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.sheetConfirm, archiving && styles.sheetConfirmDisabled]}
+                onPress={submitArchive}
+                disabled={archiving}
+                accessibilityRole="button">
+                {archiving ? <ActivityIndicator color={colors.white} /> : <Text style={styles.sheetConfirmText}>Archiveren</Text>}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -352,14 +411,22 @@ const styles = StyleSheet.create({
   },
   cardWrap: { position: 'relative', marginBottom: 8 },
   cardInWrap: { marginBottom: 0 },
-  deleteBtn: { position: 'absolute', top: 12, right: 12, padding: 4 },
+  cardActions: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', gap: 12, padding: 4 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
-  cardTopWithDelete: { paddingRight: 22 },
+  cardTopWithDelete: { paddingRight: 40 },
   cardName: { fontFamily: fonts.heading, fontSize: 17, textTransform: 'uppercase', color: colors.ink, flexShrink: 1 },
   cardFase: { fontFamily: fonts.monoMedium, fontSize: 12, color: colors.accentDark },
   cardMeta: { fontFamily: fonts.body, fontSize: 13, color: colors.inkMuted },
   tagRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   empty: { fontFamily: fonts.body, fontSize: 14, color: colors.inkMuted, marginTop: 12 },
+  archiefLink: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 12,
+    color: colors.inkMuted,
+    textDecorationLine: 'underline',
+    textAlign: 'center',
+    marginTop: 4,
+  },
   backdrop: { flex: 1, backgroundColor: 'rgba(29,31,32,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 },
   sheet: { width: '100%', maxWidth: 380, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.ink, padding: 16, gap: 10 },
   sheetTitle: { fontFamily: fonts.heading, fontSize: 18, textTransform: 'uppercase', color: colors.ink },

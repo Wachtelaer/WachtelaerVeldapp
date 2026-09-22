@@ -20,6 +20,7 @@ export interface Werf {
   adres: string;
   fase: string;
   is_algemeen: boolean;
+  gearchiveerd: boolean;
   created_at: string;
 }
 

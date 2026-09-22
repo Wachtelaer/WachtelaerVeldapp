@@ -26,6 +26,7 @@ import {
   isMemberOfWerf,
   listRapportenForWerf,
   listRecentFotosForWerf,
+  setWerfGearchiveerd,
 } from '@/lib/api/werven';
 import type { Werf, Werfrapport, WerfrapportFoto } from '@/lib/database.types';
 import { colors, fonts } from '@/lib/theme';
@@ -46,6 +47,7 @@ export default function WerfDetailScreen() {
   const [pendingFotoUris, setPendingFotoUris] = useState<string[]>([]);
   const [uploadingFotos, setUploadingFotos] = useState(false);
   const [fotoError, setFotoError] = useState<string | null>(null);
+  const [herstellen, setHerstellen] = useState(false);
 
   const load = useCallback(async () => {
     if (!werfId || !profile) return;
@@ -85,6 +87,19 @@ export default function WerfDetailScreen() {
 
   const isMgmt = profile?.role === 'mgmt';
   const kanFotosToevoegen = isMgmt || isMember;
+
+  const herstelWerf = async () => {
+    if (!werf) return;
+    setHerstellen(true);
+    try {
+      await setWerfGearchiveerd(werf.id, false);
+      await load();
+    } catch (e: any) {
+      setError(e.message ?? 'Kon werf niet herstellen');
+    } finally {
+      setHerstellen(false);
+    }
+  };
 
   const submitFotos = async () => {
     if (!werf || pendingFotoUris.length === 0) return;
@@ -134,6 +149,19 @@ export default function WerfDetailScreen() {
               <Text style={styles.naam}>{werf.naam}</Text>
               <Text style={styles.adres}>{werf.adres}</Text>
             </View>
+
+            {werf.gearchiveerd && isMgmt ? (
+              <View style={styles.archiefBanner}>
+                <Text style={styles.archiefBannerText}>Deze werf is gearchiveerd — niet zichtbaar voor werfleden.</Text>
+                <TouchableOpacity onPress={herstelWerf} disabled={herstellen} accessibilityRole="button">
+                  {herstellen ? (
+                    <ActivityIndicator color={colors.accentDark} size="small" />
+                  ) : (
+                    <Text style={styles.archiefBannerLink}>Herstel</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : null}
 
             <View style={styles.row}>
               <TouchableOpacity
@@ -238,6 +266,24 @@ const styles = StyleSheet.create({
   error: { fontFamily: fonts.body, color: colors.danger },
   naam: { fontFamily: fonts.headingBold, fontSize: 26, textTransform: 'uppercase', color: colors.ink, marginTop: 4 },
   adres: { fontFamily: fonts.body, fontSize: 14, color: colors.inkMuted, marginTop: 4 },
+  archiefBanner: {
+    borderWidth: 1,
+    borderColor: colors.dividerStrong,
+    backgroundColor: colors.chipBg,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  archiefBannerText: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.inkMuted },
+  archiefBannerLink: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.accentDark,
+  },
   row: { flexDirection: 'row', gap: 8 },
   secondaryAction: {
     flex: 1,

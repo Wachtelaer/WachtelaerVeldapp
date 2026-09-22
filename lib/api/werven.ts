@@ -15,7 +15,12 @@ export interface WerfListItem extends Werf {
 }
 
 export async function listAlleWerven(): Promise<Pick<Werf, 'id' | 'naam'>[]> {
-  const { data, error } = await supabase.from('werven').select('id, naam').eq('is_algemeen', false).order('naam');
+  const { data, error } = await supabase
+    .from('werven')
+    .select('id, naam')
+    .eq('is_algemeen', false)
+    .eq('gearchiveerd', false)
+    .order('naam');
   if (error) throw error;
   return data ?? [];
 }
@@ -35,10 +40,27 @@ export async function deleteWerf(werfId: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function setWerfGearchiveerd(werfId: string, gearchiveerd: boolean): Promise<void> {
+  const { error } = await supabase.from('werven').update({ gearchiveerd }).eq('id', werfId);
+  if (error) throw error;
+}
+
+/** Gearchiveerde werven — enkel voor management, via het archief-scherm. */
+export async function listGearchiveerdeWerven(): Promise<Pick<Werf, 'id' | 'code' | 'naam' | 'adres' | 'fase'>[]> {
+  const { data, error } = await supabase
+    .from('werven')
+    .select('id, code, naam, adres, fase')
+    .eq('is_algemeen', false)
+    .eq('gearchiveerd', true)
+    .order('naam');
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function listWervenWithSummary(profileId: string): Promise<WerfListItem[]> {
   const [{ data: werven, error: wErr }, { data: members, error: mErr }, { data: summaries, error: sErr }] =
     await Promise.all([
-      supabase.from('werven').select('*').eq('is_algemeen', false).order('naam'),
+      supabase.from('werven').select('*').eq('is_algemeen', false).eq('gearchiveerd', false).order('naam'),
       supabase.from('werf_members').select('werf_id, profile_id, is_leider, profiles(full_name)'),
       supabase.from('werf_summary').select('*'),
     ]);
