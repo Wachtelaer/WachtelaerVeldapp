@@ -14,13 +14,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 import { AppHeader } from '@/components/AppHeader';
+import { OpmetingCard } from '@/components/OpmetingCard';
 import { KpiTile, SectionLabel, Tag } from '@/components/ui/Basics';
 import { Button } from '@/components/ui/Button';
 import { ChipGroup, FieldLabel, TextField } from '@/components/ui/Form';
 import { useAuth } from '@/context/AuthProvider';
 import { createWerf, deleteWerf, listWervenWithSummary, setWerfGearchiveerd, type WerfListItem } from '@/lib/api/werven';
 import { listOpmetingen, type OpmetingListItem } from '@/lib/api/opmetingen';
-import { getModule, summarizeAntwoorden } from '@/lib/salesModules';
 import { colors, fonts, roleLabels } from '@/lib/theme';
 
 const FASE_OPTIES = ['offerte', 'opstart', 'bezig', 'afwerking'];
@@ -205,28 +205,14 @@ export default function WervenHomeScreen() {
               {opmetingen && opmetingen.length === 0 ? (
                 <Text style={styles.empty}>Nog geen opmetingen.</Text>
               ) : null}
-              {opmetingen?.map((o) => {
-                const mod = getModule(o.module);
-                return (
-                  <View key={o.id} style={styles.card}>
-                    <View style={styles.cardTop}>
-                      <Text style={styles.cardName} numberOfLines={1}>
-                        {o.klant_naam || '(naam ontbreekt)'}
-                      </Text>
-                      <Text style={styles.cardFase}>{formatDatum(o.created_at)}</Text>
-                    </View>
-                    <Text style={styles.cardMeta} numberOfLines={2}>
-                      {isMgmt
-                        ? `${o.verkoperNaam} · ${mod.naam} · ${summarizeAntwoorden(mod, o.antwoorden)}`
-                        : `${mod.naam} · ${summarizeAntwoorden(mod, o.antwoorden)}`}
-                    </Text>
-                    <View style={styles.tagRow}>
-                      <Tag label={`${o.fotoCount} foto's`} />
-                      <Tag label={o.status} tone="accent" />
-                    </View>
-                  </View>
-                );
-              })}
+              {opmetingen?.slice(0, 5).map((o) => (
+                <OpmetingCard key={o.id} opmeting={o} toonVerkoper={isMgmt} />
+              ))}
+              {opmetingen && opmetingen.length > 5 ? (
+                <TouchableOpacity onPress={() => router.push('/werven/opmeting')} accessibilityRole="button">
+                  <Text style={styles.linkText}>{`Alle opmetingen bekijken (${opmetingen.length})`}</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           </View>
         ) : null}
@@ -279,7 +265,7 @@ export default function WervenHomeScreen() {
 
         {isMgmt ? (
           <TouchableOpacity onPress={() => router.push('/werven/archief')} accessibilityRole="button">
-            <Text style={styles.archiefLink}>Gearchiveerde werven bekijken</Text>
+            <Text style={styles.linkText}>Gearchiveerde werven bekijken</Text>
           </TouchableOpacity>
         ) : null}
       </ScrollView>
@@ -419,7 +405,7 @@ const styles = StyleSheet.create({
   cardMeta: { fontFamily: fonts.body, fontSize: 13, color: colors.inkMuted },
   tagRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   empty: { fontFamily: fonts.body, fontSize: 14, color: colors.inkMuted, marginTop: 12 },
-  archiefLink: {
+  linkText: {
     fontFamily: fonts.monoMedium,
     fontSize: 12,
     color: colors.inkMuted,
