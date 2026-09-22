@@ -4,7 +4,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, Touc
 
 import { AppHeader } from '@/components/AppHeader';
 import { TaakCard } from '@/components/TaakCard';
-import { KpiTile } from '@/components/ui/Basics';
+import { KpiTile, SectionLabel } from '@/components/ui/Basics';
 import { ChipGroup, FieldLabel, TextArea, TextField } from '@/components/ui/Form';
 import { useAuth } from '@/context/AuthProvider';
 import { listAlleWerven } from '@/lib/api/werven';
@@ -218,6 +218,7 @@ function BeheerView() {
   };
 
   const openTaken = taken?.filter((t) => !t.gedaan) ?? [];
+  const mijnTaken = taken?.filter((t) => t.toegewezen_aan === profile?.id) ?? [];
 
   return (
     <>
@@ -238,18 +239,40 @@ function BeheerView() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {taken === null && !error ? <ActivityIndicator color={colors.accent} style={{ marginTop: 24 }} /> : null}
+
+        {mijnTaken.length > 0 ? (
+          <View>
+            <SectionLabel>Mijn taken</SectionLabel>
+            {mijnTaken.map((t) => (
+              <TaakCard
+                key={t.id}
+                taak={t}
+                toonToegewezenAan={false}
+                busy={busyId === t.id}
+                onToggle={() => toggle(t)}
+                onDelete={() => remove(t)}
+              />
+            ))}
+          </View>
+        ) : null}
+
         {taken?.length === 0 ? <Text style={styles.empty}>Nog geen taken.</Text> : null}
 
-        {taken?.map((t) => (
-          <TaakCard
-            key={t.id}
-            taak={t}
-            toonToegewezenAan
-            busy={busyId === t.id}
-            onToggle={() => toggle(t)}
-            onDelete={() => remove(t)}
-          />
-        ))}
+        {taken && taken.length > 0 ? (
+          <View>
+            <SectionLabel>Alle taken</SectionLabel>
+            {taken.map((t) => (
+              <TaakCard
+                key={t.id}
+                taak={t}
+                toonToegewezenAan
+                busy={busyId === t.id}
+                onToggle={() => toggle(t)}
+                onDelete={() => remove(t)}
+              />
+            ))}
+          </View>
+        ) : null}
       </ScrollView>
 
       <Modal visible={addOpen} transparent animationType="fade" onRequestClose={() => setAddOpen(false)}>
