@@ -232,6 +232,10 @@ function BeheerView() {
           <KpiTile value={String(taken?.length ?? 0)} label="totaal" />
         </View>
 
+        <TouchableOpacity style={styles.addBtn} onPress={openAdd} accessibilityRole="button">
+          <Text style={styles.addBtnText}>+ nieuwe taak</Text>
+        </TouchableOpacity>
+
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {taken === null && !error ? <ActivityIndicator color={colors.accent} style={{ marginTop: 24 }} /> : null}
         {taken?.length === 0 ? <Text style={styles.empty}>Nog geen taken.</Text> : null}
@@ -246,10 +250,6 @@ function BeheerView() {
             onDelete={() => remove(t)}
           />
         ))}
-
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd} accessibilityRole="button">
-          <Text style={styles.addBtnText}>+ nieuwe taak</Text>
-        </TouchableOpacity>
       </ScrollView>
 
       <Modal visible={addOpen} transparent animationType="fade" onRequestClose={() => setAddOpen(false)}>
