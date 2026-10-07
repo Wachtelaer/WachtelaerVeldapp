@@ -104,13 +104,10 @@ Deno.serve(async (req) => {
 Klant: ${klantNaam || '(onbekend)'}
 Gevraagd werk: ${omschrijving}
 
-Hieronder staat een lijst van regels uit eerder aanvaarde offertes (echte, actuele prijszetting van dit bedrijf). Gebruik ze als referentie om realistische offerteregels voor te stellen voor het gevraagde werk — kopieer gelijkaardige regels waar mogelijk (zelfde omschrijving/prijs), en pas aantallen aan op basis van wat logisch is voor het gevraagde werk. Verzin geen onrealistische prijzen; baseer je zoveel mogelijk op de referentieregels.
+Hieronder staat een lijst van regels uit eerder aanvaarde offertes (echte, actuele prijszetting van dit bedrijf, inclusief het artikelnummer waar van toepassing). Gebruik ze als referentie om realistische offerteregels voor te stellen voor het gevraagde werk — kopieer gelijkaardige regels waar mogelijk (zelfde omschrijving/prijs/artikelnummer), en pas aantallen aan op basis van wat logisch is voor het gevraagde werk. Neem het artikelnummer exact over wanneer een regel een bestaand product is; laat het weg bij arbeid/werkuren. Verzin geen onrealistische prijzen of artikelnummers; baseer je zoveel mogelijk op de referentieregels.
 
 Referentieregels (JSON, max 400):
-${JSON.stringify(referentieRegels)}
-
-Antwoord UITSLUITEND met geldige JSON, exact in dit formaat, zonder uitleg erbuiten:
-{"regels": [{"omschrijving": "<tekst>", "aantal": <getal>, "eenheid": "<bv. 'uur', 'stuk', 'm'>", "prijs": <getal, excl. btw per eenheid>, "inkoopprijs": <getal, kostprijs per eenheid, 0 als arbeid>, "btw": <21 of 6>}], "toelichting": "<max 1 korte zin, Nederlands, waarom deze regels>"}`;
+${JSON.stringify(referentieRegels)}`;
 
     const parsed = await vraagClaudeTool(anthropicKey, prompt, 2048, {
       name: 'stel_offerteregels_voor',
@@ -129,6 +126,11 @@ Antwoord UITSLUITEND met geldige JSON, exact in dit formaat, zonder uitleg erbui
                 prijs: { type: 'number', description: 'Excl. btw, per eenheid' },
                 inkoopprijs: { type: 'number', description: 'Kostprijs per eenheid, 0 als arbeid' },
                 btw: { type: 'number', description: '21 of 6' },
+                materiaalCode: {
+                  type: ['string', 'null'],
+                  description:
+                    'Het artikelnummer (materiaalCode) uit de referentieregels, exact overgenomen als deze regel een bestaand product is. Null bij arbeid/werkuren of iets zonder eigen artikelnummer.',
+                },
               },
               required: ['omschrijving', 'aantal', 'eenheid', 'prijs', 'btw'],
             },
