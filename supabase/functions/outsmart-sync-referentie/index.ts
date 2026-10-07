@@ -1,13 +1,19 @@
-// Wachtelaer Veldapp — bouwt/ververst de gededupliceerde prijsreferentie
-// (public.outsmart_prijsreferentie) uit ALLE offertes in Outsmart, elke
-// status (aanvaard, uitgevoerd, geweigerd, concept, ...) — niet enkel
-// aanvaarde, op uitdrukkelijk verzoek: ook niet-aanvaarde offertes bevatten
-// bruikbare prijszetting als leerdata.
+// Wachtelaer Veldapp — bouwt/ververst twee leerdata-tabellen uit ALLE
+// offertes in Outsmart, in één en dezelfde fetch:
+//
+//   1. public.outsmart_prijsreferentie — gededupliceerde prijs/artikel-
+//      referentie uit offertes van elke status (aanvaard, uitgevoerd,
+//      geweigerd, concept, ...) — ook niet-aanvaarde offertes bevatten
+//      bruikbare prijszetting.
+//   2. public.outsmart_duurreferentie — per UITGEVOERDE (EXECUTED) offerte
+//      de werkelijk bestede uren per hourtype-rol, zodat de agent het
+//      AANTAL uren voor een nieuwe klus kan gronden op vergelijkbare,
+//      echt afgewerkte klussen in plaats van vrij te gokken.
 //
 // Dit is bewust een aparte, manueel te triggeren sync-stap: alle offertes
 // in één keer ophalen duurt ~10s en ~57MB (2022 offertes, ~34k regels) —
 // te traag om bij elke offerte-aanmaak live te doen. outsmart-offerte-
-// aanmaken leest nadien enkel nog uit deze kleine, snelle tabel.
+// aanmaken leest nadien enkel nog uit deze kleine, snelle tabellen.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -85,15 +91,47 @@ Deno.serve(async (req) => {
       aantal_offertes: count,
     }));
 
+    // Duurreferentie: enkel offertes met status UITGEVOERD leveren
+    // betrouwbare "dit is hoeveel uur dit écht gekost heeft"-data op — een
+    // CONCEPT of GEWEIGERDE offerte zegt niets over de werkelijke duur.
+    const duurRows: any[] = [];
+    for (const q of alle) {
+      if (q.quo_status !== 'EXECUTED') continue;
+      const omschrijvingKlus = String(q.quo_description || q.quo_reference || '').trim();
+      if (!omschrijvingKlus) continue;
+      const urenPerHourtype: Record<string, number> = {};
+      for (const l of q.qln_lines ?? []) {
+        if (!l.qln_material_hourtype) continue;
+        const code = String(l.qln_material_hourtype);
+        const aantal = Number(l.qln_amount) || 0;
+        if (aantal <= 0) continue;
+        urenPerHourtype[code] = (urenPerHourtype[code] ?? 0) + aantal;
+      }
+      const totaalUren = Object.values(urenPerHourtype).reduce((a, b) => a + b, 0);
+      if (totaalUren <= 0) continue;
+      duurRows.push({
+        quo_id: String(q.quo_id),
+        omschrijving: omschrijvingKlus.slice(0, 500),
+        datum: q.quo_date || null,
+        uren: urenPerHourtype,
+        totaal_uren: totaalUren,
+      });
+    }
+
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Oude rijen eerst wegdoen — anders blijven artikelen die niet meer
-    // voorkomen in Outsmart voor altijd in onze referentie staan.
+    // Oude rijen eerst wegdoen — anders blijven artikelen/klussen die niet
+    // meer voorkomen in Outsmart voor altijd in onze referentie staan.
     const { error: deleteError } = await adminClient
       .from('outsmart_prijsreferentie')
       .delete()
       .not('id', 'is', null);
     if (deleteError) throw new Error(deleteError.message);
+    const { error: deleteDuurError } = await adminClient
+      .from('outsmart_duurreferentie')
+      .delete()
+      .not('id', 'is', null);
+    if (deleteDuurError) throw new Error(deleteDuurError.message);
 
     const BATCH = 500;
     for (let i = 0; i < rows.length; i += BATCH) {
@@ -102,10 +140,17 @@ Deno.serve(async (req) => {
         .insert(rows.slice(i, i + BATCH));
       if (insertError) throw new Error(insertError.message);
     }
+    for (let i = 0; i < duurRows.length; i += BATCH) {
+      const { error: insertDuurError } = await adminClient
+        .from('outsmart_duurreferentie')
+        .insert(duurRows.slice(i, i + BATCH));
+      if (insertDuurError) throw new Error(insertDuurError.message);
+    }
 
     return json({
       totaalOffertesVerwerkt: alle.length,
       uniekeArtikelen: rows.length,
+      uitgevoerdeKlussenMetUren: duurRows.length,
     });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Synchronisatie mislukt' }, 502);

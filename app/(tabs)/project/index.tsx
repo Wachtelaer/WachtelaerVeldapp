@@ -291,8 +291,10 @@ export default function ProjectScreen() {
     setSyncError(null);
     setSyncResultaat(null);
     try {
-      const { totaalOffertesVerwerkt, uniekeArtikelen } = await syncPrijsreferentie();
-      setSyncResultaat(`${totaalOffertesVerwerkt} offertes verwerkt → ${uniekeArtikelen} unieke artikelen/diensten`);
+      const { totaalOffertesVerwerkt, uniekeArtikelen, uitgevoerdeKlussenMetUren } = await syncPrijsreferentie();
+      setSyncResultaat(
+        `${totaalOffertesVerwerkt} offertes verwerkt → ${uniekeArtikelen} unieke artikelen/diensten, ${uitgevoerdeKlussenMetUren} uitgevoerde klussen met urenhistoriek`
+      );
     } catch (e: any) {
       setSyncError(e.message ?? 'Synchronisatie mislukt');
     } finally {

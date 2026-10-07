@@ -135,6 +135,36 @@ Deno.serve(async (req) => {
     const hourtypesRes = await outsmartGet(base, token, softwareToken, 'hourtypes', {});
     const hourtypes: any[] = (hourtypesRes.response ?? []).filter((h: any) => h.active !== '0');
     const hourtypesByCode = new Map(hourtypes.map((h) => [String(h.code), h]));
+    const hourtypeNaamByCode = new Map(hourtypes.map((h) => [String(h.code), h.name]));
+
+    // 1d. Duurreferentie: het AANTAL uren voor een klus werd tot nu toe
+    //     volledig door Claude zelf geschat, zonder enige onderbouwing —
+    //     in tegenstelling tot de prijs/kostprijs, die wél uit de
+    //     hourtypes-catalogus komt. Deze tabel (gebouwd uit offertes met
+    //     status UITGEVOERD, zie outsmart-sync-referentie) geeft per
+    //     vergelijkbare, écht afgewerkte klus de werkelijk bestede uren per
+    //     rol — zodat de agent zich daarop kan baseren i.p.v. vrij te gokken.
+    let duurReferentie: any[] = [];
+    if (serviceRoleKey) {
+      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+      const { data: duurRows } = await adminClient
+        .from('outsmart_duurreferentie')
+        .select('omschrijving, uren, totaal_uren, datum');
+      if (duurRows && duurRows.length > 0) {
+        const alleDuur = duurRows.map((r) => ({
+          omschrijving: r.omschrijving,
+          urenPerRol: Object.fromEntries(
+            Object.entries((r.uren as Record<string, number>) ?? {}).map(([code, uren]) => [
+              hourtypeNaamByCode.get(code) ?? code,
+              uren,
+            ])
+          ),
+          totaalUren: Number(r.totaal_uren) || 0,
+          datum: r.datum,
+        }));
+        duurReferentie = kiesRelevanteReferentie(omschrijving, alleDuur, 15);
+      }
+    }
 
     // 2. Claude laten kiezen/voorstellen welke regels nodig zijn.
     const prompt = `Je bent een offerte-assistent voor Wachtelaer, een Belgische verwarmings- en sanitairinstallateur. Een klant vraagt het volgende werk:
@@ -149,7 +179,14 @@ ${JSON.stringify(referentieRegels)}
 
 Voor arbeid/werkuren: gebruik GEEN generieke "Werkuren"-regel, maar kies per regel de juiste rol (hourtypeCode) uit deze lijst, op basis van wie het werk uitvoert:
 ${JSON.stringify(hourtypes.map((h) => ({ code: h.code, naam: h.name })))}
-Splits arbeid over meerdere regels als verschillende rollen werk uitvoeren (bv. plaatser én technieker). Laat prijs/inkoopprijs/eenheid gerust leeg of 0 voor deze regels — die komen automatisch uit het hourtype zelf, niet uit jouw schatting. Enkel het aantal uren telt.`;
+Splits arbeid over meerdere regels als verschillende rollen werk uitvoeren (bv. plaatser én technieker). Laat prijs/inkoopprijs/eenheid gerust leeg of 0 voor deze regels — die komen automatisch uit het hourtype zelf, niet uit jouw schatting. Enkel het aantal uren telt.
+
+${
+  duurReferentie.length > 0
+    ? `Voor het AANTAL uren per rol: baseer je op de werkelijk bestede uren van vergelijkbare, al UITGEVOERDE klussen hieronder (echte historische duur, geen schatting) — kies het aantal van de meest gelijkaardige klus, en pas het enkel aan als de gevraagde klus daar duidelijk van afwijkt (groter/kleiner/complexer):
+${JSON.stringify(duurReferentie)}`
+    : 'Er is geen vergelijkbare al uitgevoerde klus gevonden in de historiek — schat het aantal uren zelf in op basis van de aard van het gevraagde werk.'
+}`;
 
     const parsed = await vraagClaudeTool(anthropicKey, prompt, 2048, {
       name: 'stel_offerteregels_voor',
@@ -286,10 +323,11 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** Selecteert de meest relevante referentieregels voor deze aanvraag uit de
- *  volledige (gededupliceerde) prijsreferentie — op woord-overlap met de
- *  gevraagde omschrijving, niet blind afgekapt. Bij geen enkele match (bv.
- *  heel generieke vraag) valt terug op de meest recent gebruikte regels. */
+/** Selecteert de meest relevante rijen voor deze aanvraag — op woord-overlap
+ *  met de gevraagde omschrijving, niet blind afgekapt. Bij geen enkele match
+ *  (bv. heel generieke vraag) valt terug op de meest recent gebruikte/
+ *  uitgevoerde rijen. Generiek herbruikt voor zowel de prijsreferentie als
+ *  de duurreferentie (beide hebben een `omschrijving`-veld). */
 function kiesRelevanteReferentie(omschrijving: string, alle: any[], max: number): any[] {
   const woorden = (s: string) =>
     new Set((s.toLowerCase().match(/[a-z0-9À-ž]{3,}/g) ?? []));
