@@ -19,7 +19,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { BackRow, Tag } from '@/components/ui/Basics';
 import { ChipGroup, FieldLabel, TextField } from '@/components/ui/Form';
 import { useAuth } from '@/context/AuthProvider';
-import { getWerf, listAlleWerven } from '@/lib/api/werven';
+import { getWerf, isLeiderOfWerf, listAlleWerven } from '@/lib/api/werven';
 import { getPlanUrl, listDocumenten, markPlannenRead, uploadPlan, type DocumentMetVersies } from '@/lib/api/plannen';
 import type { Werf } from '@/lib/database.types';
 import { colors, fonts } from '@/lib/theme';
@@ -67,6 +67,7 @@ export default function PlannenWerfScreen() {
   const isMgmt = profile?.role === 'mgmt';
 
   const [werf, setWerf] = useState<Werf | null>(null);
+  const [isLeider, setIsLeider] = useState(false);
   const [documenten, setDocumenten] = useState<DocumentMetVersies[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -77,15 +78,22 @@ export default function PlannenWerfScreen() {
   const [alleWerven, setAlleWerven] = useState<{ id: string; naam: string }[]>([]);
   const [doelWerfNaam, setDoelWerfNaam] = useState<string>('');
 
+  const kanToevoegen = isMgmt || isLeider;
+
   const load = useCallback(async () => {
     if (!werfId || !profile) return;
     try {
       setError(null);
-      const [w, docs] = await Promise.all([getWerf(werfId), listDocumenten(werfId, profile.id)]);
+      const [w, leider, docs] = await Promise.all([
+        getWerf(werfId),
+        isLeiderOfWerf(werfId, profile.id),
+        listDocumenten(werfId, profile.id),
+      ]);
       setWerf(w);
+      setIsLeider(leider);
       setDocumenten(docs);
       await markPlannenRead(werfId, profile.id);
-      if (isMgmt && alleWerven.length === 0) {
+      if ((isMgmt || leider) && alleWerven.length === 0) {
         setAlleWerven(await listAlleWerven());
       }
     } catch (e: any) {
@@ -211,7 +219,7 @@ export default function PlannenWerfScreen() {
           </View>
         ))}
 
-        {isMgmt ? (
+        {kanToevoegen ? (
           <TouchableOpacity style={styles.addBtn} onPress={pickFiles} accessibilityRole="button">
             <Text style={styles.addBtnText}>+ plannen of pdf's toevoegen</Text>
           </TouchableOpacity>
