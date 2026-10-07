@@ -5,11 +5,13 @@ import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View }
 import { AppHeader } from '@/components/AppHeader';
 import { KpiTile, SectionLabel, Tag } from '@/components/ui/Basics';
 import { Button } from '@/components/ui/Button';
+import { FieldLabel, TextArea } from '@/components/ui/Form';
 import { useAuth } from '@/context/AuthProvider';
 import { listDossiers, type Dossier } from '@/lib/api/outsmartPipeline';
 import { listOpmetingen, type OpmetingListItem } from '@/lib/api/opmetingen';
 import { listWervenWithSummary, type WerfListItem } from '@/lib/api/werven';
 import { vraagAgentAdvies, type AgentAdvies } from '@/lib/api/outsmartAgent';
+import { maakOfferteAan, type NieuweOfferte } from '@/lib/api/outsmartOfferte';
 import { lijktOpzelfde } from '@/lib/dossierMatching';
 import { berekenNacalculatie, voorgesteldeActie } from '@/lib/dossierSuggesties';
 import { colors, fonts } from '@/lib/theme';
@@ -53,6 +55,66 @@ function MaterialenCard({ dossier }: { dossier: Dossier }) {
           </Text>
         </View>
       ))}
+    </View>
+  );
+}
+
+function NieuweOfferteForm({ dossier }: { dossier: Dossier }) {
+  const [omschrijving, setOmschrijving] = useState('');
+  const [bezig, setBezig] = useState(false);
+  const [resultaat, setResultaat] = useState<NieuweOfferte | null>(null);
+  const [toelichting, setToelichting] = useState<string | null>(null);
+  const [fout, setFout] = useState<string | null>(null);
+
+  if (!dossier.debtorNr) return null;
+
+  const aanmaken = async () => {
+    if (!omschrijving.trim()) return;
+    setBezig(true);
+    setFout(null);
+    try {
+      const { offerte, toelichting: t } = await maakOfferteAan({
+        debtorNr: dossier.debtorNr!,
+        klantNaam: dossier.klantNaam ?? dossier.naam,
+        omschrijving: omschrijving.trim(),
+      });
+      setResultaat(offerte);
+      setToelichting(t);
+      setOmschrijving('');
+    } catch (e: any) {
+      setFout(e.message ?? 'Offerte aanmaken mislukt');
+    } finally {
+      setBezig(false);
+    }
+  };
+
+  return (
+    <View style={styles.nieuweOfferte}>
+      <FieldLabel>Extra werk — agent maakt meteen een offerte aan in Outsmart</FieldLabel>
+      <TextArea
+        value={omschrijving}
+        onChangeText={setOmschrijving}
+        placeholder="Bv. Extra wasbak plaatsen in badkamer boven"
+        numberOfLines={2}
+      />
+      <Button
+        label={bezig ? 'Agent maakt offerte aan…' : 'Automatisch offerte aanmaken'}
+        variant="secondary"
+        onPress={aanmaken}
+        loading={bezig}
+        disabled={!omschrijving.trim()}
+      />
+      {fout ? <Text style={styles.error}>{fout}</Text> : null}
+      {resultaat ? (
+        <View style={styles.nieuweOfferteResultaat}>
+          <Text style={styles.agentAdviesText}>
+            Offerte {resultaat.nummer} aangemaakt ({resultaat.status}) — {formatBedrag(resultaat.bedrag)}, marge{' '}
+            {formatBedrag(String(resultaat.margeEuro))}
+            {resultaat.margePercent !== null ? ` (${resultaat.margePercent.toFixed(0)}%)` : ''}.
+          </Text>
+          {toelichting ? <Text style={styles.aandachtspuntText}>{toelichting}</Text> : null}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -156,6 +218,8 @@ function DossierCard({
           <Text style={styles.stapSub}>{nacalculatie ? 'verschil fact. t.o.v. offerte' : 'nog niet gefactureerd'}</Text>
         </View>
       </View>
+
+      <NieuweOfferteForm dossier={dossier} />
     </View>
   );
 }
@@ -364,4 +428,17 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   aandachtspuntText: { fontFamily: fonts.body, fontSize: 13, color: colors.ink, lineHeight: 18 },
+  nieuweOfferte: {
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+    paddingTop: 10,
+    gap: 8,
+  },
+  nieuweOfferteResultaat: {
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.accentPale,
+    padding: 9,
+    gap: 3,
+  },
 });

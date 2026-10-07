@@ -26,6 +26,7 @@ export interface Dossier {
   naam: string;
   fase: string | null;
   klantNaam: string | null;
+  debtorNr: string | null;
   adres: string | null;
   latitude: number | null;
   longitude: number | null;

@@ -156,6 +156,7 @@ Deno.serve(async (req) => {
         naam: project ? (project.name ?? '').trim() : '',
         fase: project?.status || null,
         klantNaam: q.quo_quotation_debtor_name || rel?.name || null,
+        debtorNr: q.quo_quotation_debtor_nr ?? null,
         adres,
         latitude,
         longitude,
