@@ -98,6 +98,13 @@ Deno.serve(async (req) => {
       throw new Error('Kon geen quotation-scheme (quo_qus_id) bepalen voor deze klant');
     }
 
+    // 1c. Werkuren horen niet als generieke "Werkuren"-materiaalregel in de
+    //     offerte, maar als een echt uren-type (qln_material_hourtype) per
+    //     rol — Outsmart heeft daar een eigen, klein vast catalogus voor.
+    const hourtypesRes = await outsmartGet(base, token, softwareToken, 'hourtypes', {});
+    const hourtypes: any[] = (hourtypesRes.response ?? []).filter((h: any) => h.active !== '0');
+    const hourtypesByCode = new Map(hourtypes.map((h) => [String(h.code), h]));
+
     // 2. Claude laten kiezen/voorstellen welke regels nodig zijn.
     const prompt = `Je bent een offerte-assistent voor Wachtelaer, een Belgische verwarmings- en sanitairinstallateur. Een klant vraagt het volgende werk:
 
@@ -107,7 +114,11 @@ Gevraagd werk: ${omschrijving}
 Hieronder staat een lijst van regels uit eerder aanvaarde offertes (echte, actuele prijszetting van dit bedrijf, inclusief het artikelnummer waar van toepassing). Gebruik ze als referentie om realistische offerteregels voor te stellen voor het gevraagde werk — kopieer gelijkaardige regels waar mogelijk (zelfde omschrijving/prijs/artikelnummer), en pas aantallen aan op basis van wat logisch is voor het gevraagde werk. Neem het artikelnummer exact over wanneer een regel een bestaand product is; laat het weg bij arbeid/werkuren. Verzin geen onrealistische prijzen of artikelnummers; baseer je zoveel mogelijk op de referentieregels.
 
 Referentieregels (JSON, max 400):
-${JSON.stringify(referentieRegels)}`;
+${JSON.stringify(referentieRegels)}
+
+Voor arbeid/werkuren: gebruik GEEN generieke "Werkuren"-regel, maar kies per regel de juiste rol (hourtypeCode) uit deze lijst, op basis van wie het werk uitvoert:
+${JSON.stringify(hourtypes.map((h) => ({ code: h.code, naam: h.name })))}
+Splits arbeid over meerdere regels als verschillende rollen werk uitvoeren (bv. plaatser én technieker). Laat prijs/inkoopprijs/eenheid gerust leeg of 0 voor deze regels — die komen automatisch uit het hourtype zelf, niet uit jouw schatting. Enkel het aantal uren telt.`;
 
     const parsed = await vraagClaudeTool(anthropicKey, prompt, 2048, {
       name: 'stel_offerteregels_voor',
@@ -131,6 +142,11 @@ ${JSON.stringify(referentieRegels)}`;
                   description:
                     'Het artikelnummer (materiaalCode) uit de referentieregels, exact overgenomen als deze regel een bestaand product is. Null bij arbeid/werkuren of iets zonder eigen artikelnummer.',
                 },
+                hourtypeCode: {
+                  type: ['string', 'null'],
+                  description:
+                    'Voor arbeidsregels: de code van de juiste rol uit de meegegeven hourtypes-lijst (bv. "1" voor plaatser). Null bij materiaal-/productregels. Prijs/inkoopprijs worden voor deze regels genegeerd — enkel aantal telt.',
+                },
               },
               required: ['omschrijving', 'aantal', 'eenheid', 'prijs', 'btw'],
             },
@@ -147,26 +163,32 @@ ${JSON.stringify(referentieRegels)}`;
     //    afhankelijk van server-side herberekening — onbevestigd of Outsmart
     //    dat doet).
     const qlnLines = voorgesteldeRegels.map((r, i) => {
+      const hourtype = r.hourtypeCode ? hourtypesByCode.get(String(r.hourtypeCode)) : null;
       const aantal = Number(r.aantal) || 1;
-      const prijs = Number(r.prijs) || 0;
+      // Werkuren: prijs/inkoopprijs komen altijd uit het hourtype zelf, niet
+      // uit Claude's eigen schatting — dat was precies waarom historische
+      // "Werkuren"-regels onderling verschillende prijzen hadden.
+      const prijs = hourtype ? Number(hourtype.sale_price) || 0 : Number(r.prijs) || 0;
+      const inkoopprijs = hourtype ? Number(hourtype.cost_price) || 0 : Number(r.inkoopprijs) || 0;
       const btw = Number(r.btw) || 21;
       const totaalExcl = round2(aantal * prijs);
       const totaalVat = round2(totaalExcl * (btw / 100));
-      const omschrijving = String(r.omschrijving ?? '').slice(0, 500);
+      const omschrijving = hourtype ? hourtype.name : String(r.omschrijving ?? '').slice(0, 500);
       return {
         qln_id: null,
         qln_quo_id: null,
         qln_order: String(i + 1),
-        qln_material_code: r.materiaalCode ?? null,
+        qln_material_code: hourtype ? null : (r.materiaalCode ?? null),
+        qln_material_hourtype: hourtype ? hourtype.code : null,
         qln_description: omschrijving,
         // Outsmart vereist minstens één van material_code/hourtype/note per
-        // regel — arbeidsregels (zonder materiaalcode) hebben anders geen
-        // van de drie, dus de omschrijving dient ook als note.
+        // regel — arbeidsregels zonder hourtype (zeldzaam) hebben anders
+        // geen van de drie, dus de omschrijving dient ook als note.
         qln_note: omschrijving,
-        qln_unit: r.eenheid ?? '',
+        qln_unit: hourtype ? 'uur' : (r.eenheid ?? ''),
         qln_amount: aantal.toFixed(5),
         qln_price: prijs.toFixed(5),
-        purchase_price: (Number(r.inkoopprijs) || 0).toFixed(5),
+        purchase_price: inkoopprijs.toFixed(5),
         qln_price_incl: round2(prijs * (1 + btw / 100)).toFixed(5),
         qln_vat_percentage: btw.toFixed(2),
         qln_discount: '0.00',
