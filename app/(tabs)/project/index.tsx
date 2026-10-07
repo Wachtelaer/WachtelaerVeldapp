@@ -4,13 +4,14 @@ import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View }
 
 import { AppHeader } from '@/components/AppHeader';
 import { KpiTile, SectionLabel, Tag } from '@/components/ui/Basics';
+import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthProvider';
 import { listDossiers, type Dossier } from '@/lib/api/outsmartPipeline';
 import { listOpmetingen, type OpmetingListItem } from '@/lib/api/opmetingen';
 import { listWervenWithSummary, type WerfListItem } from '@/lib/api/werven';
+import { vraagAgentAdvies, type AgentAdvies } from '@/lib/api/outsmartAgent';
 import { lijktOpzelfde } from '@/lib/dossierMatching';
 import { berekenNacalculatie, voorgesteldeActie } from '@/lib/dossierSuggesties';
-import { vindNabijeDossiers } from '@/lib/geografie';
 import { colors, fonts } from '@/lib/theme';
 
 function formatBedrag(bedrag: string | undefined): string {
@@ -60,19 +61,18 @@ function DossierCard({
   dossier,
   opmeting,
   werf,
-  alleDossiers,
+  agentAdvies,
 }: {
   dossier: Dossier;
   opmeting: OpmetingListItem | null;
   werf: WerfListItem | null;
-  alleDossiers: Dossier[];
+  agentAdvies: AgentAdvies | null;
 }) {
   const laatsteOfferte = dossier.offertes[0];
   const facturatieTotaal = dossier.facturen.reduce((sum, f) => sum + (Number(f.bedrag) || 0), 0);
   const isGefactureerd = dossier.facturen.length > 0;
   const suggestie = voorgesteldeActie(dossier, opmeting, werf);
   const nacalculatie = berekenNacalculatie(dossier);
-  const nabij = !opmeting ? vindNabijeDossiers(dossier, alleDossiers) : [];
 
   return (
     <View style={styles.card}>
@@ -88,15 +88,20 @@ function DossierCard({
         <Text style={[styles.suggestieText, suggestie.tone === 'actie' && styles.suggestieTextActie]}>
           {suggestie.tekst}
         </Text>
-        {nabij.length > 0 ? (
-          <Text style={[styles.suggestieText, suggestie.tone === 'actie' && styles.suggestieTextActie]}>
-            {`Dicht bij: ${nabij
-              .slice(0, 3)
-              .map((n) => `${n.dossier.klantNaam || n.dossier.naam || '(naam ontbreekt)'} (${n.afstandKm.toFixed(1)} km)`)
-              .join(', ')} — overweeg samen in te plannen.`}
-          </Text>
-        ) : null}
       </View>
+
+      {agentAdvies ? (
+        <View style={styles.agentAdvies}>
+          <View style={styles.agentAdviesTop}>
+            <Text style={styles.agentLabel}>AI-advies</Text>
+            <Tag
+              label={agentAdvies.prioriteit}
+              tone={agentAdvies.prioriteit === 'hoog' ? 'accent' : 'neutral'}
+            />
+          </View>
+          <Text style={styles.agentAdviesText}>{agentAdvies.advies}</Text>
+        </View>
+      ) : null}
 
       <View style={styles.stappenRow}>
         <View style={styles.stap}>
@@ -105,10 +110,20 @@ function DossierCard({
           <Text style={styles.stapSub}>{laatsteOfferte ? formatDatum(laatsteOfferte.datumAanvaard) : 'geen offerte'}</Text>
         </View>
         <View style={styles.stap}>
+          <Text style={styles.stapLabel}>Marge</Text>
+          <Text style={[styles.stapWaarde, dossier.margeEuro < 0 && styles.stapWaardeNegatief]}>
+            {formatBedrag(String(dossier.margeEuro))}
+          </Text>
+          <Text style={styles.stapSub}>{dossier.margePercent !== null ? `${dossier.margePercent.toFixed(0)}%` : '—'}</Text>
+        </View>
+        <View style={styles.stap}>
           <Text style={styles.stapLabel}>Opmeting</Text>
           <Text style={styles.stapWaarde}>{opmeting ? opmeting.module : '—'}</Text>
           <Text style={styles.stapSub}>{opmeting ? formatDatum(opmeting.created_at) : 'geen match in app'}</Text>
         </View>
+      </View>
+
+      <View style={styles.stappenRow}>
         <View style={styles.stap}>
           <Text style={styles.stapLabel}>Werf</Text>
           <Text style={styles.stapWaarde}>{dossier.fase || '—'}</Text>
@@ -116,9 +131,6 @@ function DossierCard({
             {dossier.periodeStart ? `${formatDatum(dossier.periodeStart)} – ${formatDatum(dossier.periodeEind)}` : '—'}
           </Text>
         </View>
-      </View>
-
-      <View style={styles.stappenRow}>
         <View style={styles.stap}>
           <Text style={styles.stapLabel}>Rapporten (werf)</Text>
           <Text style={styles.stapWaarde}>{werf ? `${werf.rapportCount}` : '—'}</Text>
@@ -133,6 +145,9 @@ function DossierCard({
             {isGefactureerd ? `${dossier.facturen.length} factu(u)r(en)` : 'nog niet gefactureerd'}
           </Text>
         </View>
+      </View>
+
+      <View style={styles.stappenRow}>
         <View style={styles.stap}>
           <Text style={styles.stapLabel}>Nacalculatie</Text>
           <Text style={[styles.stapWaarde, nacalculatie && nacalculatie.verschil < 0 && styles.stapWaardeNegatief]}>
@@ -152,6 +167,11 @@ export default function ProjectScreen() {
   const [werven, setWerven] = useState<WerfListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  const [agentAdviezen, setAgentAdviezen] = useState<Map<string, AgentAdvies>>(new Map());
+  const [agentAandachtspunten, setAgentAandachtspunten] = useState<string[]>([]);
+  const [agentBezig, setAgentBezig] = useState(false);
+  const [agentError, setAgentError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!profile) return;
@@ -182,6 +202,21 @@ export default function ProjectScreen() {
     setRefreshing(false);
   };
 
+  const vraagAdvies = async () => {
+    if (!dossiers || dossiers.length === 0) return;
+    setAgentBezig(true);
+    setAgentError(null);
+    try {
+      const { adviezen, aandachtspunten } = await vraagAgentAdvies(dossiers);
+      setAgentAdviezen(new Map(adviezen.map((a) => [a.id, a])));
+      setAgentAandachtspunten(aandachtspunten);
+    } catch (e: any) {
+      setAgentError(e.message ?? 'Kon geen AI-advies ophalen');
+    } finally {
+      setAgentBezig(false);
+    }
+  };
+
   const gefactureerd = (dossiers ?? []).filter((d) => d.facturen.length > 0).length;
   const teBestellen = (dossiers ?? []).filter((d) => binnenTweeWeken(d.periodeStart) && d.materialen.length > 0);
 
@@ -194,9 +229,9 @@ export default function ProjectScreen() {
         <View>
           <Text style={styles.title}>Pipeline</Text>
           <Text style={styles.subtitle}>
-            Outsmart (offerte, werf-fase, materialen, facturatie) gekoppeld aan onze eigen app (opmeting,
-            werfrapporten) op naam — een losse gok, geen harde koppeling, dus controleer een match altijd. Afspraak
-            volgt nog.
+            Outsmart (offerte, marge, werf-fase, materialen, facturatie) gekoppeld aan onze eigen app (opmeting,
+            werfrapporten) op naam — een losse gok, geen harde koppeling, dus controleer een match altijd.
+            Geografische afspraak-planning voor leads volgt — vereist een echte agenda-koppeling.
           </Text>
         </View>
 
@@ -205,6 +240,19 @@ export default function ProjectScreen() {
             <KpiTile value={String(dossiers.length)} label="actieve dossiers" />
             <KpiTile value={String(gefactureerd)} label="gefactureerd" />
             <KpiTile value={String(dossiers.length - gefactureerd)} label="nog te factureren" />
+          </View>
+        ) : null}
+
+        {dossiers && dossiers.length > 0 ? (
+          <Button label={agentBezig ? 'Agent denkt na…' : 'Vraag AI-advies'} onPress={vraagAdvies} loading={agentBezig} />
+        ) : null}
+        {agentError ? <Text style={styles.error}>{agentError}</Text> : null}
+        {agentAandachtspunten.length > 0 ? (
+          <View style={styles.aandachtspunten}>
+            <Text style={styles.agentLabel}>Aandachtspunten (AI)</Text>
+            {agentAandachtspunten.map((a, i) => (
+              <Text key={i} style={styles.aandachtspuntText}>{`• ${a}`}</Text>
+            ))}
           </View>
         ) : null}
 
@@ -229,7 +277,15 @@ export default function ProjectScreen() {
               const matchOpmeting =
                 opmetingen.find((o) => namen.some((n) => lijktOpzelfde(n, o.klant_naam))) ?? null;
               const matchWerf = werven.find((w) => namen.some((n) => lijktOpzelfde(n, w.naam))) ?? null;
-              return <DossierCard key={d.id} dossier={d} opmeting={matchOpmeting} werf={matchWerf} alleDossiers={dossiers} />;
+              return (
+                <DossierCard
+                  key={d.id}
+                  dossier={d}
+                  opmeting={matchOpmeting}
+                  werf={matchWerf}
+                  agentAdvies={agentAdviezen.get(d.id) ?? null}
+                />
+              );
             })}
           </View>
         ) : null}
@@ -282,4 +338,30 @@ const styles = StyleSheet.create({
   },
   materiaalOmschrijving: { flex: 1, fontFamily: fonts.body, fontSize: 12.5, color: colors.ink },
   materiaalAantal: { fontFamily: fonts.monoMedium, fontSize: 12, color: colors.accentDark },
+  agentAdvies: {
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.accentPale,
+    borderStyle: 'dashed',
+    paddingVertical: 7,
+    paddingHorizontal: 9,
+    gap: 3,
+  },
+  agentAdviesTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  agentLabel: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 9.5,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    color: colors.accentDark,
+  },
+  agentAdviesText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.ink, lineHeight: 16 },
+  aandachtspunten: {
+    borderWidth: 1,
+    borderColor: colors.dividerStrong,
+    backgroundColor: colors.white,
+    padding: 10,
+    gap: 4,
+  },
+  aandachtspuntText: { fontFamily: fonts.body, fontSize: 13, color: colors.ink, lineHeight: 18 },
 });

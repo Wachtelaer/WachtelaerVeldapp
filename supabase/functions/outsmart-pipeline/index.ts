@@ -140,6 +140,17 @@ Deno.serve(async (req) => {
       const latitude = toCoord(qnd?.qnd_latitude) ?? toCoord(rel?.latitude);
       const longitude = toCoord(qnd?.qnd_longitude) ?? toCoord(rel?.longitude);
 
+      // Marge = omzet excl. btw min inkoopprijs, per offerteregel opgeteld
+      // (ook arbeidsuren tellen mee — die hebben geen inkoopprijs, dus
+      // leveren volledige marge op, net als in Outsmart zelf).
+      const margeEuro = (q.qln_lines ?? []).reduce((som: number, l: any) => {
+        const omzet = Number(l.qln_total_excl) || 0;
+        const kost = (Number(l.purchase_price) || 0) * (Number(l.qln_amount) || 0);
+        return som + (omzet - kost);
+      }, 0);
+      const offerteBedragExcl = Number(q.quo_amount_excl) || 0;
+      const margePercent = offerteBedragExcl > 0 ? (margeEuro / offerteBedragExcl) * 100 : null;
+
       return {
         id: q.quo_id,
         naam: project ? (project.name ?? '').trim() : '',
@@ -160,6 +171,8 @@ Deno.serve(async (req) => {
         ],
         facturen,
         materialen,
+        margeEuro,
+        margePercent,
       };
     });
 

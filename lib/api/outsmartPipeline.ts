@@ -34,6 +34,8 @@ export interface Dossier {
   offertes: OutsmartOfferteRegel[];
   facturen: OutsmartFactuurRegel[];
   materialen: OutsmartMateriaalRegel[];
+  margeEuro: number;
+  margePercent: number | null;
 }
 
 /** Per-dossier pipeline (offerte -> werf-fase -> facturatie) pulled live
