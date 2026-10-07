@@ -4,7 +4,11 @@ import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View }
 
 import { AppHeader } from '@/components/AppHeader';
 import { KpiTile, SectionLabel, Tag } from '@/components/ui/Basics';
+import { useAuth } from '@/context/AuthProvider';
 import { listDossiers, type Dossier } from '@/lib/api/outsmartPipeline';
+import { listOpmetingen, type OpmetingListItem } from '@/lib/api/opmetingen';
+import { listWervenWithSummary, type WerfListItem } from '@/lib/api/werven';
+import { lijktOpzelfde } from '@/lib/dossierMatching';
 import { colors, fonts } from '@/lib/theme';
 
 function formatBedrag(bedrag: string | undefined): string {
@@ -18,7 +22,15 @@ function formatDatum(iso: string | null): string {
   return new Date(iso).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function DossierCard({ dossier }: { dossier: Dossier }) {
+function DossierCard({
+  dossier,
+  opmeting,
+  werf,
+}: {
+  dossier: Dossier;
+  opmeting: OpmetingListItem | null;
+  werf: WerfListItem | null;
+}) {
   const laatsteOfferte = dossier.offertes[0];
   const facturatieTotaal = dossier.facturen.reduce((sum, f) => sum + (Number(f.bedrag) || 0), 0);
   const isGefactureerd = dossier.facturen.length > 0;
@@ -40,10 +52,25 @@ function DossierCard({ dossier }: { dossier: Dossier }) {
           <Text style={styles.stapSub}>{laatsteOfferte ? formatDatum(laatsteOfferte.datumAanvaard) : 'geen offerte'}</Text>
         </View>
         <View style={styles.stap}>
+          <Text style={styles.stapLabel}>Opmeting</Text>
+          <Text style={styles.stapWaarde}>{opmeting ? opmeting.module : '—'}</Text>
+          <Text style={styles.stapSub}>{opmeting ? formatDatum(opmeting.created_at) : 'geen match in app'}</Text>
+        </View>
+        <View style={styles.stap}>
           <Text style={styles.stapLabel}>Werf</Text>
           <Text style={styles.stapWaarde}>{dossier.fase || '—'}</Text>
           <Text style={styles.stapSub}>
             {dossier.periodeStart ? `${formatDatum(dossier.periodeStart)} – ${formatDatum(dossier.periodeEind)}` : '—'}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.stappenRow}>
+        <View style={styles.stap}>
+          <Text style={styles.stapLabel}>Rapporten (werf)</Text>
+          <Text style={styles.stapWaarde}>{werf ? `${werf.rapportCount}` : '—'}</Text>
+          <Text style={styles.stapSub}>
+            {werf?.laatsteRapport ? formatDatum(werf.laatsteRapport.datum) : werf ? 'nog geen rapport' : 'geen match in app'}
           </Text>
         </View>
         <View style={styles.stap}>
@@ -53,24 +80,36 @@ function DossierCard({ dossier }: { dossier: Dossier }) {
             {isGefactureerd ? `${dossier.facturen.length} factu(u)r(en)` : 'nog niet gefactureerd'}
           </Text>
         </View>
+        <View style={styles.stap} />
       </View>
     </View>
   );
 }
 
 export default function ProjectScreen() {
+  const { profile } = useAuth();
   const [dossiers, setDossiers] = useState<Dossier[] | null>(null);
+  const [opmetingen, setOpmetingen] = useState<OpmetingListItem[]>([]);
+  const [werven, setWerven] = useState<WerfListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
+    if (!profile) return;
     try {
       setError(null);
-      setDossiers(await listDossiers());
+      const [d, o, w] = await Promise.all([
+        listDossiers(),
+        listOpmetingen(),
+        listWervenWithSummary(profile.id),
+      ]);
+      setDossiers(d);
+      setOpmetingen(o);
+      setWerven(w);
     } catch (e: any) {
       setError(e.message ?? 'Kon dossiers niet laden');
     }
-  }, []);
+  }, [profile]);
 
   useFocusEffect(
     useCallback(() => {
@@ -95,8 +134,8 @@ export default function ProjectScreen() {
         <View>
           <Text style={styles.title}>Pipeline</Text>
           <Text style={styles.subtitle}>
-            Live uit Outsmart: offerte → werf → facturatie, per actief dossier. Afspraak, opmeting, bestelling en
-            werkbon volgen nog — die stap-voor-stap-automatisering bouwen we hierna verder uit.
+            Outsmart (offerte, werf-fase, facturatie) gekoppeld aan onze eigen app (opmeting, werfrapporten) op naam —
+            een losse gok, geen harde koppeling, dus controleer een match altijd. Afspraak en bestelling volgen nog.
           </Text>
         </View>
 
@@ -115,9 +154,13 @@ export default function ProjectScreen() {
         {dossiers && dossiers.length > 0 ? (
           <View>
             <SectionLabel>Dossiers</SectionLabel>
-            {dossiers.map((d) => (
-              <DossierCard key={d.id} dossier={d} />
-            ))}
+            {dossiers.map((d) => {
+              const namen = [d.klantNaam, d.naam].filter((n): n is string => !!n);
+              const matchOpmeting =
+                opmetingen.find((o) => namen.some((n) => lijktOpzelfde(n, o.klant_naam))) ?? null;
+              const matchWerf = werven.find((w) => namen.some((n) => lijktOpzelfde(n, w.naam))) ?? null;
+              return <DossierCard key={d.id} dossier={d} opmeting={matchOpmeting} werf={matchWerf} />;
+            })}
           </View>
         ) : null}
       </ScrollView>
