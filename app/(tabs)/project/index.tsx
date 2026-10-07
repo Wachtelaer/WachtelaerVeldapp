@@ -9,6 +9,7 @@ import { listDossiers, type Dossier } from '@/lib/api/outsmartPipeline';
 import { listOpmetingen, type OpmetingListItem } from '@/lib/api/opmetingen';
 import { listWervenWithSummary, type WerfListItem } from '@/lib/api/werven';
 import { lijktOpzelfde } from '@/lib/dossierMatching';
+import { berekenNacalculatie, voorgesteldeActie } from '@/lib/dossierSuggesties';
 import { colors, fonts } from '@/lib/theme';
 
 function formatBedrag(bedrag: string | undefined): string {
@@ -34,6 +35,8 @@ function DossierCard({
   const laatsteOfferte = dossier.offertes[0];
   const facturatieTotaal = dossier.facturen.reduce((sum, f) => sum + (Number(f.bedrag) || 0), 0);
   const isGefactureerd = dossier.facturen.length > 0;
+  const suggestie = voorgesteldeActie(dossier, opmeting, werf);
+  const nacalculatie = berekenNacalculatie(dossier);
 
   return (
     <View style={styles.card}>
@@ -44,6 +47,12 @@ function DossierCard({
         {dossier.fase ? <Tag label={dossier.fase} tone="accent" /> : null}
       </View>
       {dossier.adres ? <Text style={styles.cardAdres}>{dossier.adres}</Text> : null}
+
+      <View style={[styles.suggestie, suggestie.tone === 'actie' && styles.suggestieActie]}>
+        <Text style={[styles.suggestieText, suggestie.tone === 'actie' && styles.suggestieTextActie]}>
+          {suggestie.tekst}
+        </Text>
+      </View>
 
       <View style={styles.stappenRow}>
         <View style={styles.stap}>
@@ -80,7 +89,13 @@ function DossierCard({
             {isGefactureerd ? `${dossier.facturen.length} factu(u)r(en)` : 'nog niet gefactureerd'}
           </Text>
         </View>
-        <View style={styles.stap} />
+        <View style={styles.stap}>
+          <Text style={styles.stapLabel}>Nacalculatie</Text>
+          <Text style={[styles.stapWaarde, nacalculatie && nacalculatie.verschil < 0 && styles.stapWaardeNegatief]}>
+            {nacalculatie ? formatBedrag(String(nacalculatie.verschil)) : '—'}
+          </Text>
+          <Text style={styles.stapSub}>{nacalculatie ? 'verschil fact. t.o.v. offerte' : 'nog niet gefactureerd'}</Text>
+        </View>
       </View>
     </View>
   );
@@ -191,4 +206,15 @@ const styles = StyleSheet.create({
   },
   stapWaarde: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.ink },
   stapSub: { fontFamily: fonts.mono, fontSize: 10, color: colors.inkMuted },
+  stapWaardeNegatief: { color: colors.danger },
+  suggestie: {
+    backgroundColor: colors.accentTint,
+    borderWidth: 1,
+    borderColor: colors.accentPale,
+    paddingVertical: 7,
+    paddingHorizontal: 9,
+  },
+  suggestieActie: { backgroundColor: '#fbeaea', borderColor: colors.danger },
+  suggestieText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.accentDarker, lineHeight: 16 },
+  suggestieTextActie: { color: colors.danger },
 });
