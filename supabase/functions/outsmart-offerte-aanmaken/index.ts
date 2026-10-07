@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       const adminClient = createClient(supabaseUrl, serviceRoleKey);
       const { data: referentieRows } = await adminClient
         .from('outsmart_prijsreferentie')
-        .select('omschrijving, eenheid, prijs, inkoopprijs, btw, materiaal_code, laatst_gebruikt');
+        .select('omschrijving, eenheid, prijs, inkoopprijs, btw, materiaal_code, sectie, laatst_gebruikt');
       if (referentieRows && referentieRows.length > 0) {
         const alle = referentieRows.map((r) => ({
           omschrijving: r.omschrijving,
@@ -81,6 +81,7 @@ Deno.serve(async (req) => {
           inkoopprijs: Number(r.inkoopprijs) || 0,
           btw: Number(r.btw) || 21,
           materiaalCode: r.materiaal_code,
+          sectie: r.sectie,
           laatstGebruikt: r.laatst_gebruikt,
         }));
         referentieRegels = kiesRelevanteReferentie(omschrijving, alle, 200);
@@ -106,6 +107,7 @@ Deno.serve(async (req) => {
           inkoopprijs: Number(l.purchase_price) || 0,
           btw: Number(l.qln_vat_percentage) || 21,
           materiaalCode: l.qln_material_code || null,
+          sectie: l.section || null,
         }))
         .slice(0, 400);
     }
@@ -174,6 +176,8 @@ Gevraagd werk: ${omschrijving}
 
 Hieronder staat een lijst van regels uit eerdere offertes van dit bedrijf (elke status — ook niet-aanvaarde offertes bevatten bruikbare, echte prijszetting — al dan niet uitgevoerd, geweigerd, enz., geselecteerd op relevantie voor dit gevraagde werk). Gebruik ze als referentie om realistische offerteregels voor te stellen — kopieer gelijkaardige regels waar mogelijk (zelfde omschrijving/prijs/artikelnummer), en pas aantallen aan op basis van wat logisch is voor het gevraagde werk. Neem het artikelnummer exact over wanneer een regel een bestaand product is; laat het weg bij arbeid/werkuren. Verzin geen onrealistische prijzen of artikelnummers; baseer je zoveel mogelijk op de referentieregels.
 
+Elke referentieregel heeft ook een "sectie" — het hoofdstuk waarin Outsmart die regel vroeger plaatste (bv. "Ketel", "Schouw"). Behoud deze indeling in hoofdstukken: geef elke nieuwe regel een "sectie" mee die overeenkomt met hoe gelijkaardige regels hierboven ingedeeld werden (zelfde sectienaam exact overnemen), en groepeer regels van dezelfde sectie na elkaar in je antwoord. Als geen enkele referentieregel een duidelijke sectie-match geeft, verzin dan een korte, logische sectienaam op basis van het gevraagde werk (bv. het onderdeel of de ruimte waar het op slaat) — laat sectie nooit leeg als de offerte uit meerdere onderdelen bestaat.
+
 Referentieregels (JSON):
 ${JSON.stringify(referentieRegels)}
 
@@ -214,6 +218,11 @@ ${JSON.stringify(duurReferentie)}`
                   type: ['string', 'null'],
                   description:
                     'Voor arbeidsregels: de code van de juiste rol uit de meegegeven hourtypes-lijst (bv. "1" voor plaatser). Null bij materiaal-/productregels. Prijs/inkoopprijs worden voor deze regels genegeerd — enkel aantal telt.',
+                },
+                sectie: {
+                  type: ['string', 'null'],
+                  description:
+                    'Het hoofdstuk/sectie waarin deze regel hoort (bv. "Ketel", "Schouw"), exact overgenomen van een gelijkaardige referentieregel indien die er is. Null enkel toegestaan als de offerte uit één enkel, niet op te splitsen onderdeel bestaat.',
                 },
               },
               required: ['omschrijving', 'aantal', 'eenheid', 'prijs', 'btw'],
@@ -266,7 +275,10 @@ ${JSON.stringify(duurReferentie)}`
         qln_total_excl: totaalExcl.toFixed(5),
         qln_total_incl: round2(totaalExcl + totaalVat).toFixed(5),
         qln_hidden: '0',
-        section: '',
+        // Groepeert regels in Outsmart's eigen hoofdstukken-indeling (bv.
+        // "Ketel", "Schouw") — zonder dit veld komt alles in één platte
+        // lijst, anders dan hoe offertes hier voorheen altijd gemaakt werden.
+        section: r.sectie ? String(r.sectie).slice(0, 100) : '',
         qln_billable: '1',
       };
     });
@@ -308,7 +320,7 @@ ${JSON.stringify(duurReferentie)}`
         status: created.quo_status,
         bedrag: created.quo_amount,
         url: created.url ?? null,
-        regels: qlnLines.map((l) => ({ omschrijving: l.qln_description, aantal: Number(l.qln_amount), eenheid: l.qln_unit, prijs: Number(l.qln_price) })),
+        regels: qlnLines.map((l) => ({ omschrijving: l.qln_description, aantal: Number(l.qln_amount), eenheid: l.qln_unit, prijs: Number(l.qln_price), sectie: l.section || null })),
         margeEuro,
         margePercent,
       },

@@ -87,6 +87,11 @@ Deno.serve(async (req) => {
       prijs: Number(l.qln_price) || 0,
       inkoopprijs: Number(l.purchase_price) || 0,
       btw: Number(l.qln_vat_percentage) || 21,
+      // In welk hoofdstuk/sectie dit artikel het laatst werd geplaatst (bv.
+      // "Ketel", "Schouw") — Outsmart groepeert offerteregels via dit vrije
+      // tekstveld; de agent gebruikt dit om nieuwe offertes in dezelfde
+      // indeling op te bouwen i.p.v. één platte lijst.
+      sectie: l.section || null,
       laatst_gebruikt: datum || null,
       aantal_offertes: count,
     }));
