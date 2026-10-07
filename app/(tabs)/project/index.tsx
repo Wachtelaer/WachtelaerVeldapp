@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
@@ -298,6 +298,8 @@ export default function ProjectScreen() {
             Geografische afspraak-planning voor leads volgt — vereist een echte agenda-koppeling.
           </Text>
         </View>
+
+        <Button label="Nieuw klantenbezoek" onPress={() => router.push('/project/bezoek')} />
 
         {dossiers ? (
           <View style={styles.kpiRow}>
