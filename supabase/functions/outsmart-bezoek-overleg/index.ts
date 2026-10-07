@@ -65,30 +65,54 @@ Antwoord UITSLUITEND met geldige JSON, exact in dit formaat, zonder uitleg erbui
 {"status": "vraag" | "klaar", "tekst": "<je vervolgvraag, of je samenvatting als je klaar bent>"}`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-5',
-        max_tokens: 512,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-    if (!res.ok) {
-      const errBody = await res.text();
-      throw new Error(`Anthropic API-fout (${res.status}): ${errBody.slice(0, 300)}`);
-    }
-    const body = await res.json();
-    const text: string = body.content?.[0]?.text ?? '';
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Geen JSON gevonden in het antwoord van de agent');
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = await vraagClaudeJson(anthropicKey, prompt, 512);
     const status = parsed.status === 'klaar' ? 'klaar' : 'vraag';
     return json({ status, tekst: String(parsed.tekst ?? '') });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Overleg met de agent mislukt' }, 502);
   }
 });
+
+/** Vraagt Claude om JSON en maakt dat ook afdwingbaar: de assistant-beurt
+ *  wordt geprefilld met "{" (Anthropic's eigen techniek om vrije tekst
+ *  rond het antwoord te vermijden), in plaats van enkel op een regex te
+ *  vertrouwen om JSON uit vrije tekst te vissen — die faalde zodra Claude
+ *  iets anders dan pure JSON terugstuurde (precies de fout die hier
+ *  gemeld werd). */
+async function vraagClaudeJson(anthropicKey: string, prompt: string, maxTokens: number): Promise<any> {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-5',
+      max_tokens: maxTokens,
+      messages: [
+        { role: 'user', content: prompt },
+        { role: 'assistant', content: '{' },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`Anthropic API-fout (${res.status}): ${errBody.slice(0, 300)}`);
+  }
+
+  const body = await res.json();
+  const continuation: string = body.content?.[0]?.text ?? '';
+  const fullText = '{' + continuation;
+  try {
+    return JSON.parse(fullText);
+  } catch {
+    const lastBrace = fullText.lastIndexOf('}');
+    if (lastBrace === -1) throw new Error(`Kon het antwoord van de agent niet als JSON lezen: ${fullText.slice(0, 300)}`);
+    try {
+      return JSON.parse(fullText.slice(0, lastBrace + 1));
+    } catch {
+      throw new Error(`Kon het antwoord van de agent niet als JSON lezen: ${fullText.slice(0, 300)}`);
+    }
+  }
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

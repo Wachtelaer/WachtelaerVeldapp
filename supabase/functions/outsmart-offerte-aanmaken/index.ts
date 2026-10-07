@@ -93,24 +93,7 @@ ${JSON.stringify(referentieRegels)}
 Antwoord UITSLUITEND met geldige JSON, exact in dit formaat, zonder uitleg erbuiten:
 {"regels": [{"omschrijving": "<tekst>", "aantal": <getal>, "eenheid": "<bv. 'uur', 'stuk', 'm'>", "prijs": <getal, excl. btw per eenheid>, "inkoopprijs": <getal, kostprijs per eenheid, 0 als arbeid>, "btw": <21 of 6>}], "toelichting": "<max 1 korte zin, Nederlands, waarom deze regels>"}`;
 
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-5',
-        max_tokens: 2048,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-    if (!claudeRes.ok) {
-      const errBody = await claudeRes.text();
-      throw new Error(`Anthropic API-fout (${claudeRes.status}): ${errBody.slice(0, 300)}`);
-    }
-    const claudeBody = await claudeRes.json();
-    const text: string = claudeBody.content?.[0]?.text ?? '';
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Geen JSON gevonden in het antwoord van de agent');
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = await vraagClaudeJson(anthropicKey, prompt, 2048);
     const voorgesteldeRegels: any[] = Array.isArray(parsed.regels) ? parsed.regels : [];
     if (voorgesteldeRegels.length === 0) throw new Error('De agent stelde geen offerteregels voor');
 
@@ -222,6 +205,46 @@ async function outsmartPost(base: string, token: string, softwareToken: string, 
   const body = await res.json();
   if (body.code !== 200) throw new Error(Array.isArray(body.messages) && body.messages.length ? body.messages.join(', ') : `Outsmart-fout (${body.code})`);
   return body;
+}
+
+/** Vraagt Claude om JSON en maakt dat ook afdwingbaar: de assistant-beurt
+ *  wordt geprefilld met "{" (Anthropic's eigen techniek om vrije tekst
+ *  rond het antwoord te vermijden), in plaats van enkel op een regex te
+ *  vertrouwen om JSON uit vrije tekst te vissen — die faalde zodra Claude
+ *  iets anders dan pure JSON terugstuurde. */
+async function vraagClaudeJson(anthropicKey: string, prompt: string, maxTokens: number): Promise<any> {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-5',
+      max_tokens: maxTokens,
+      messages: [
+        { role: 'user', content: prompt },
+        { role: 'assistant', content: '{' },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`Anthropic API-fout (${res.status}): ${errBody.slice(0, 300)}`);
+  }
+
+  const body = await res.json();
+  const continuation: string = body.content?.[0]?.text ?? '';
+  const fullText = '{' + continuation;
+  try {
+    return JSON.parse(fullText);
+  } catch {
+    const lastBrace = fullText.lastIndexOf('}');
+    if (lastBrace === -1) throw new Error(`Kon het antwoord van de agent niet als JSON lezen: ${fullText.slice(0, 300)}`);
+    try {
+      return JSON.parse(fullText.slice(0, lastBrace + 1));
+    } catch {
+      throw new Error(`Kon het antwoord van de agent niet als JSON lezen: ${fullText.slice(0, 300)}`);
+    }
+  }
 }
 
 function json(body: unknown, status = 200) {
