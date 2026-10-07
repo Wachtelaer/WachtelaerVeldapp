@@ -136,12 +136,18 @@ Deno.serve(async (req) => {
           betaaldOp: i.inv_timestamp_payed ?? null,
         }));
 
+      const qnd = q.quotation_debtor;
+      const latitude = toCoord(qnd?.qnd_latitude) ?? toCoord(rel?.latitude);
+      const longitude = toCoord(qnd?.qnd_longitude) ?? toCoord(rel?.longitude);
+
       return {
         id: q.quo_id,
         naam: project ? (project.name ?? '').trim() : '',
         fase: project?.status || null,
         klantNaam: q.quo_quotation_debtor_name || rel?.name || null,
         adres,
+        latitude,
+        longitude,
         periodeStart: project?.date_start || null,
         periodeEind: project?.date_end || null,
         offertes: [
@@ -164,6 +170,14 @@ Deno.serve(async (req) => {
     return json({ error: e instanceof Error ? e.message : 'Outsmart-aanvraag mislukt' }, 502);
   }
 });
+
+/** Outsmart stores "0.000000" for an unset coordinate, not null — treat
+ *  that (and anything unparsable) as missing. */
+function toCoord(v: unknown): number | null {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n === 0) return null;
+  return n;
+}
 
 async function outsmartGet(
   base: string,

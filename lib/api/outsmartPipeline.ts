@@ -27,6 +27,8 @@ export interface Dossier {
   fase: string | null;
   klantNaam: string | null;
   adres: string | null;
+  latitude: number | null;
+  longitude: number | null;
   periodeStart: string | null;
   periodeEind: string | null;
   offertes: OutsmartOfferteRegel[];

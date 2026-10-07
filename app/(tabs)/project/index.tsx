@@ -10,6 +10,7 @@ import { listOpmetingen, type OpmetingListItem } from '@/lib/api/opmetingen';
 import { listWervenWithSummary, type WerfListItem } from '@/lib/api/werven';
 import { lijktOpzelfde } from '@/lib/dossierMatching';
 import { berekenNacalculatie, voorgesteldeActie } from '@/lib/dossierSuggesties';
+import { vindNabijeDossiers } from '@/lib/geografie';
 import { colors, fonts } from '@/lib/theme';
 
 function formatBedrag(bedrag: string | undefined): string {
@@ -59,16 +60,19 @@ function DossierCard({
   dossier,
   opmeting,
   werf,
+  alleDossiers,
 }: {
   dossier: Dossier;
   opmeting: OpmetingListItem | null;
   werf: WerfListItem | null;
+  alleDossiers: Dossier[];
 }) {
   const laatsteOfferte = dossier.offertes[0];
   const facturatieTotaal = dossier.facturen.reduce((sum, f) => sum + (Number(f.bedrag) || 0), 0);
   const isGefactureerd = dossier.facturen.length > 0;
   const suggestie = voorgesteldeActie(dossier, opmeting, werf);
   const nacalculatie = berekenNacalculatie(dossier);
+  const nabij = !opmeting ? vindNabijeDossiers(dossier, alleDossiers) : [];
 
   return (
     <View style={styles.card}>
@@ -84,6 +88,14 @@ function DossierCard({
         <Text style={[styles.suggestieText, suggestie.tone === 'actie' && styles.suggestieTextActie]}>
           {suggestie.tekst}
         </Text>
+        {nabij.length > 0 ? (
+          <Text style={[styles.suggestieText, suggestie.tone === 'actie' && styles.suggestieTextActie]}>
+            {`Dicht bij: ${nabij
+              .slice(0, 3)
+              .map((n) => `${n.dossier.klantNaam || n.dossier.naam || '(naam ontbreekt)'} (${n.afstandKm.toFixed(1)} km)`)
+              .join(', ')} — overweeg samen in te plannen.`}
+          </Text>
+        ) : null}
       </View>
 
       <View style={styles.stappenRow}>
@@ -217,7 +229,7 @@ export default function ProjectScreen() {
               const matchOpmeting =
                 opmetingen.find((o) => namen.some((n) => lijktOpzelfde(n, o.klant_naam))) ?? null;
               const matchWerf = werven.find((w) => namen.some((n) => lijktOpzelfde(n, w.naam))) ?? null;
-              return <DossierCard key={d.id} dossier={d} opmeting={matchOpmeting} werf={matchWerf} />;
+              return <DossierCard key={d.id} dossier={d} opmeting={matchOpmeting} werf={matchWerf} alleDossiers={dossiers} />;
             })}
           </View>
         ) : null}
