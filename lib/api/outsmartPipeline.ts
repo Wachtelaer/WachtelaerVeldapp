@@ -14,6 +14,13 @@ export interface OutsmartFactuurRegel {
   betaaldOp: string | null;
 }
 
+export interface OutsmartMateriaalRegel {
+  code: string;
+  omschrijving: string;
+  aantal: number;
+  eenheid: string;
+}
+
 export interface Dossier {
   id: string;
   naam: string;
@@ -24,6 +31,7 @@ export interface Dossier {
   periodeEind: string | null;
   offertes: OutsmartOfferteRegel[];
   facturen: OutsmartFactuurRegel[];
+  materialen: OutsmartMateriaalRegel[];
 }
 
 /** Per-dossier pipeline (offerte -> werf-fase -> facturatie) pulled live

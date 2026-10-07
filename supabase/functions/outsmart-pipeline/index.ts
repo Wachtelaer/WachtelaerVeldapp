@@ -1,9 +1,21 @@
 // Wachtelaer Veldapp — "Project" dashboard (hidden tab, one account only):
-// pulls Outsmart "projects" (= job dossiers), joins their quotation and
-// invoice rows, to give a per-dossier pipeline view (offerte -> werf-fase ->
-// facturatie). Only the resources confirmed to exist on the current Outsmart
-// tokens are used — a dedicated "bestelling"/"werkbon" resource was not
-// found (see commit history); this covers 3 of the 6 requested stages.
+// anchored on ACCEPTED quotations in Outsmart (the already-proven filter
+// from outsmart-offertes) — every dossier starts life as an accepted
+// offerte, so that's the source of truth, not "active projects" (a project
+// may not exist yet, or may no longer be active, while the offerte itself
+// is still the thing to track).
+//
+// Each accepted quotation is then linked to:
+//  - its project (werf-fase/periode), if one exists yet
+//  - its invoices, via inv_quo_id
+//  - its material lines (qln_lines, embedded on the quotation itself)
+//
+// Linking note: quo_project_id / inv_project_id exist as fields but are NOT
+// filterable server-side ("Key X not allowed") and are frequently null in
+// the data itself — they can't be trusted as the join key. The reliable
+// link Outsmart's own workflow leaves behind is textual: a project's
+// `description` reads "Werkbon conform offerte <nummer>", so a project is
+// matched to a quotation by that embedded quotation number.
 //
 // Runs server-side for the same reason as outsmart-offertes: the Outsmart
 // tokens are account-wide secrets and must never reach the client bundle.
@@ -49,83 +61,103 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const projectsRes = await outsmartGet(base, token, softwareToken, 'projects', {
-      key: 'active',
-      operator: 'eq',
-      value: '1',
-    });
-    const projecten: any[] = projectsRes.response ?? [];
+    const [quotationsRes, projectsRes] = await Promise.all([
+      outsmartGet(base, token, softwareToken, 'quotations', {
+        key: 'quo_status',
+        operator: 'eq',
+        value: 'ACCEPTED',
+      }),
+      outsmartGet(base, token, softwareToken, 'projects', {
+        key: 'active',
+        operator: 'eq',
+        value: '1',
+      }),
+    ]);
+    const quotaties: any[] = quotationsRes.response ?? [];
+    const alleActieveProjecten: any[] = projectsRes.response ?? [];
 
-    const debtorNrs = [...new Set(projecten.map((p) => p.debtor_number).filter(Boolean))];
+    const debtorNrs = [...new Set(quotaties.map((q) => q.quo_quotation_debtor_nr).filter(Boolean))];
+
     const relationByDebtor = new Map<string, any>();
+    const invoicesByDebtor = new Map<string, any[]>();
     await Promise.all(
       debtorNrs.map(async (nr) => {
-        try {
-          const res = await outsmartGet(base, token, softwareToken, 'relations', {
+        const [relRes, invRes] = await Promise.all([
+          outsmartGet(base, token, softwareToken, 'relations', {
             key: 'debtor_number',
             operator: 'eq',
             value: String(nr),
-          });
-          const rel = (res.response ?? [])[0];
-          if (rel) relationByDebtor.set(nr, rel);
-        } catch {
-          // best-effort, same as outsmart-offertes
-        }
+          }).catch(() => ({ response: [] })),
+          outsmartGet(base, token, softwareToken, 'invoices', {
+            key: 'inv_invoice_debtor_nr',
+            operator: 'eq',
+            value: String(nr),
+          }).catch(() => ({ response: [] })),
+        ]);
+        const rel = (relRes.response ?? [])[0];
+        if (rel) relationByDebtor.set(nr, rel);
+        invoicesByDebtor.set(nr, invRes.response ?? []);
       })
     );
 
-    const dossiers = await Promise.all(
-      projecten.map(async (p) => {
-        const [quoRes, invRes] = await Promise.all([
-          outsmartGet(base, token, softwareToken, 'quotations', {
-            key: 'quo_project_id',
-            operator: 'eq',
-            value: String(p.id),
-          }).catch(() => ({ response: [] })),
-          outsmartGet(base, token, softwareToken, 'invoices', {
-            key: 'inv_project_id',
-            operator: 'eq',
-            value: String(p.id),
-          }).catch(() => ({ response: [] })),
-        ]);
+    const dossiers = quotaties.map((q) => {
+      const rel = relationByDebtor.get(q.quo_quotation_debtor_nr);
+      const adres = rel
+        ? [
+            [rel.street, rel.house_number].filter(Boolean).join(' '),
+            [rel.postal_code, rel.city].filter(Boolean).join(' '),
+          ]
+            .filter(Boolean)
+            .join(', ') || null
+        : null;
 
-        const rel = relationByDebtor.get(p.debtor_number);
-        const adres = rel
-          ? [
-              [rel.street, rel.house_number].filter(Boolean).join(' '),
-              [rel.postal_code, rel.city].filter(Boolean).join(' '),
-            ]
-              .filter(Boolean)
-              .join(', ') || null
-          : null;
+      // A project's description reads "Werkbon conform offerte <nummer>" —
+      // that's the only reliable link back to this quotation.
+      const project = alleActieveProjecten.find((p) =>
+        (p.description ?? '').includes(q.quo_number_formatted)
+      );
 
-        const offertes = (quoRes.response ?? []).map((q: any) => ({
-          nummer: q.quo_number_formatted,
-          status: q.quo_status,
-          bedrag: q.quo_amount,
-          datumAanvaard: q.quo_timestamp_accepted ?? null,
+      const materialen = (q.qln_lines ?? [])
+        .filter((l: any) => l.qln_material_code)
+        .map((l: any) => ({
+          code: l.qln_material_code,
+          omschrijving: l.qln_description,
+          aantal: Number(l.qln_amount) || 0,
+          eenheid: l.qln_unit || '',
         }));
 
-        const facturen = (invRes.response ?? []).map((i: any) => ({
+      const invoicesVoorDebtor = invoicesByDebtor.get(q.quo_quotation_debtor_nr) ?? [];
+      const facturen = invoicesVoorDebtor
+        .filter((i: any) => i.inv_quo_id === q.quo_id)
+        .map((i: any) => ({
           nummer: i.inv_number_formatted,
           status: i.inv_status,
           bedrag: i.inv_amount,
           betaaldOp: i.inv_timestamp_payed ?? null,
         }));
 
-        return {
-          id: p.id,
-          naam: (p.name ?? '').trim(),
-          fase: p.status || null,
-          klantNaam: rel?.name ?? null,
-          adres,
-          periodeStart: p.date_start || null,
-          periodeEind: p.date_end || null,
-          offertes,
-          facturen,
-        };
-      })
-    );
+      return {
+        id: q.quo_id,
+        naam: project ? (project.name ?? '').trim() : '',
+        fase: project?.status || null,
+        klantNaam: q.quo_quotation_debtor_name || rel?.name || null,
+        adres,
+        periodeStart: project?.date_start || null,
+        periodeEind: project?.date_end || null,
+        offertes: [
+          {
+            nummer: q.quo_number_formatted,
+            status: q.quo_status,
+            bedrag: q.quo_amount,
+            datumAanvaard: q.quo_timestamp_accepted ?? null,
+          },
+        ],
+        facturen,
+        materialen,
+      };
+    });
+
+    dossiers.sort((a, b) => (b.offertes[0]?.datumAanvaard ?? '').localeCompare(a.offertes[0]?.datumAanvaard ?? ''));
 
     return json({ dossiers });
   } catch (e) {

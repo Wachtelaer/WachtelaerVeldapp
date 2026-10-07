@@ -23,6 +23,38 @@ function formatDatum(iso: string | null): string {
   return new Date(iso).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+/** Uitvoering gepland binnen de eerstkomende 2 weken — dan moet er nu
+ *  besteld worden. */
+function binnenTweeWeken(periodeStart: string | null): boolean {
+  if (!periodeStart) return false;
+  const start = new Date(periodeStart).getTime();
+  const nu = Date.now();
+  return start >= nu && start <= nu + 14 * 24 * 60 * 60 * 1000;
+}
+
+function MaterialenCard({ dossier }: { dossier: Dossier }) {
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardTop}>
+        <Text style={styles.cardTitel} numberOfLines={1}>
+          {dossier.klantNaam || dossier.naam || '(naam ontbreekt)'}
+        </Text>
+        <Tag label={`start ${formatDatum(dossier.periodeStart)}`} tone="accent" />
+      </View>
+      {dossier.materialen.map((m, i) => (
+        <View key={`${m.code}-${i}`} style={styles.materiaalRow}>
+          <Text style={styles.materiaalOmschrijving} numberOfLines={2}>
+            {m.omschrijving}
+          </Text>
+          <Text style={styles.materiaalAantal}>
+            {m.aantal} {m.eenheid}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function DossierCard({
   dossier,
   opmeting,
@@ -139,6 +171,7 @@ export default function ProjectScreen() {
   };
 
   const gefactureerd = (dossiers ?? []).filter((d) => d.facturen.length > 0).length;
+  const teBestellen = (dossiers ?? []).filter((d) => binnenTweeWeken(d.periodeStart) && d.materialen.length > 0);
 
   return (
     <View style={styles.root}>
@@ -149,8 +182,9 @@ export default function ProjectScreen() {
         <View>
           <Text style={styles.title}>Pipeline</Text>
           <Text style={styles.subtitle}>
-            Outsmart (offerte, werf-fase, facturatie) gekoppeld aan onze eigen app (opmeting, werfrapporten) op naam —
-            een losse gok, geen harde koppeling, dus controleer een match altijd. Afspraak en bestelling volgen nog.
+            Outsmart (offerte, werf-fase, materialen, facturatie) gekoppeld aan onze eigen app (opmeting,
+            werfrapporten) op naam — een losse gok, geen harde koppeling, dus controleer een match altijd. Afspraak
+            volgt nog.
           </Text>
         </View>
 
@@ -165,6 +199,15 @@ export default function ProjectScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {dossiers === null && !error ? <ActivityIndicator color={colors.accent} style={{ marginTop: 24 }} /> : null}
         {dossiers?.length === 0 ? <Text style={styles.empty}>Geen actieve dossiers gevonden in Outsmart.</Text> : null}
+
+        {teBestellen.length > 0 ? (
+          <View>
+            <SectionLabel>Bestellingen — uitvoering binnen 2 weken</SectionLabel>
+            {teBestellen.map((d) => (
+              <MaterialenCard key={d.id} dossier={d} />
+            ))}
+          </View>
+        ) : null}
 
         {dossiers && dossiers.length > 0 ? (
           <View>
@@ -217,4 +260,14 @@ const styles = StyleSheet.create({
   suggestieActie: { backgroundColor: '#fbeaea', borderColor: colors.danger },
   suggestieText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.accentDarker, lineHeight: 16 },
   suggestieTextActie: { color: colors.danger },
+  materiaalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+    paddingTop: 6,
+  },
+  materiaalOmschrijving: { flex: 1, fontFamily: fonts.body, fontSize: 12.5, color: colors.ink },
+  materiaalAantal: { fontFamily: fonts.monoMedium, fontSize: 12, color: colors.accentDark },
 });
