@@ -6,9 +6,14 @@ import { colors, fonts } from '@/lib/theme';
 
 const PLANNING_ROLES = ['mgmt', 'sales', 'werfleider'];
 
+/** Verborgen scaffold-tab voor een feature in ontwikkeling — enkel zichtbaar
+ * voor dit ene account, niet gekoppeld aan een rol. */
+const HIDDEN_PROJECT_OWNER_ID = '97793265-0827-49e9-a611-64585da6ccaa';
+
 export default function TabsLayout() {
   const { profile } = useAuth();
   const canSeePlanning = !!profile && PLANNING_ROLES.includes(profile.role);
+  const canSeeProject = profile?.id === HIDDEN_PROJECT_OWNER_ID;
 
   return (
     <Tabs
@@ -54,6 +59,12 @@ export default function TabsLayout() {
         name="meer"
         options={{ title: 'Meer', tabBarIcon: ({ color, size }) => <Ionicons name="ellipsis-horizontal" color={color} size={size} /> }}
       />
+      <Tabs.Protected guard={canSeeProject}>
+        <Tabs.Screen
+          name="project"
+          options={{ title: 'Project', tabBarIcon: ({ color, size }) => <Ionicons name="flask" color={color} size={size} /> }}
+        />
+      </Tabs.Protected>
     </Tabs>
   );
 }
