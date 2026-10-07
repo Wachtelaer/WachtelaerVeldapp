@@ -150,13 +150,17 @@ Antwoord UITSLUITEND met geldige JSON, exact in dit formaat, zonder uitleg erbui
       const btw = Number(r.btw) || 21;
       const totaalExcl = round2(aantal * prijs);
       const totaalVat = round2(totaalExcl * (btw / 100));
+      const omschrijving = String(r.omschrijving ?? '').slice(0, 500);
       return {
         qln_id: null,
         qln_quo_id: null,
         qln_order: String(i + 1),
         qln_material_code: r.materiaalCode ?? null,
-        qln_description: String(r.omschrijving ?? '').slice(0, 500),
-        qln_note: '',
+        qln_description: omschrijving,
+        // Outsmart vereist minstens één van material_code/hourtype/note per
+        // regel — arbeidsregels (zonder materiaalcode) hebben anders geen
+        // van de drie, dus de omschrijving dient ook als note.
+        qln_note: omschrijving,
         qln_unit: r.eenheid ?? '',
         qln_amount: aantal.toFixed(5),
         qln_price: prijs.toFixed(5),
