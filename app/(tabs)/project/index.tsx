@@ -12,6 +12,7 @@ import { listOpmetingen, type OpmetingListItem } from '@/lib/api/opmetingen';
 import { listWervenWithSummary, type WerfListItem } from '@/lib/api/werven';
 import { vraagAgentAdvies, type AgentAdvies } from '@/lib/api/outsmartAgent';
 import { maakOfferteAan, type NieuweOfferte } from '@/lib/api/outsmartOfferte';
+import { syncPrijsreferentie } from '@/lib/api/outsmartSync';
 import { lijktOpzelfde } from '@/lib/dossierMatching';
 import { berekenNacalculatie, voorgesteldeActie } from '@/lib/dossierSuggesties';
 import { colors, fonts } from '@/lib/theme';
@@ -237,6 +238,10 @@ export default function ProjectScreen() {
   const [agentBezig, setAgentBezig] = useState(false);
   const [agentError, setAgentError] = useState<string | null>(null);
 
+  const [syncBezig, setSyncBezig] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncResultaat, setSyncResultaat] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     if (!profile) return;
     try {
@@ -281,6 +286,20 @@ export default function ProjectScreen() {
     }
   };
 
+  const syncLeerdata = async () => {
+    setSyncBezig(true);
+    setSyncError(null);
+    setSyncResultaat(null);
+    try {
+      const { totaalOffertesVerwerkt, uniekeArtikelen } = await syncPrijsreferentie();
+      setSyncResultaat(`${totaalOffertesVerwerkt} offertes verwerkt → ${uniekeArtikelen} unieke artikelen/diensten`);
+    } catch (e: any) {
+      setSyncError(e.message ?? 'Synchronisatie mislukt');
+    } finally {
+      setSyncBezig(false);
+    }
+  };
+
   const gefactureerd = (dossiers ?? []).filter((d) => d.facturen.length > 0).length;
   const teBestellen = (dossiers ?? []).filter((d) => binnenTweeWeken(d.periodeStart) && d.materialen.length > 0);
 
@@ -295,11 +314,21 @@ export default function ProjectScreen() {
           <Text style={styles.subtitle}>
             Outsmart (offerte, marge, werf-fase, materialen, facturatie) gekoppeld aan onze eigen app (opmeting,
             werfrapporten) op naam — een losse gok, geen harde koppeling, dus controleer een match altijd.
-            Geografische afspraak-planning voor leads volgt — vereist een echte agenda-koppeling.
+            Toont offertes met status aanvaard én uitgevoerd. Geografische afspraak-planning voor leads volgt —
+            vereist een echte agenda-koppeling.
           </Text>
         </View>
 
         <Button label="Nieuw klantenbezoek" onPress={() => router.push('/project/bezoek')} />
+
+        <Button
+          label={syncBezig ? 'Leerdata synchroniseren…' : 'Synchroniseer leerdata (alle offertes)'}
+          variant="secondary"
+          onPress={syncLeerdata}
+          loading={syncBezig}
+        />
+        {syncError ? <Text style={styles.error}>{syncError}</Text> : null}
+        {syncResultaat ? <Text style={styles.aandachtspuntText}>{syncResultaat}</Text> : null}
 
         {dossiers ? (
           <View style={styles.kpiRow}>

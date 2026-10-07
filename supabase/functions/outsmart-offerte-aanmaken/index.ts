@@ -59,25 +59,56 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // 1. Historische offerteregels ophalen als prijsreferentie.
+    // 1. Prijsreferentie ophalen — uit de gesynchroniseerde tabel
+    //    (outsmart_prijsreferentie), gebouwd uit ALLE offertes in Outsmart
+    //    (elke status, niet enkel aanvaard — zie outsmart-sync-referentie).
+    //    Live alles ophalen is te traag (2022 offertes, ~10s, ~57MB), dus
+    //    deze tabel wordt apart/periodiek bijgewerkt en hier enkel gelezen.
+    //    Daarna op relevantie voor déze aanvraag geselecteerd (woord-
+    //    overlap met de omschrijving), niet blind afgekapt.
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    let referentieRegels: any[] = [];
+    if (serviceRoleKey) {
+      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+      const { data: referentieRows } = await adminClient
+        .from('outsmart_prijsreferentie')
+        .select('omschrijving, eenheid, prijs, inkoopprijs, btw, materiaal_code, laatst_gebruikt');
+      if (referentieRows && referentieRows.length > 0) {
+        const alle = referentieRows.map((r) => ({
+          omschrijving: r.omschrijving,
+          eenheid: r.eenheid,
+          prijs: Number(r.prijs) || 0,
+          inkoopprijs: Number(r.inkoopprijs) || 0,
+          btw: Number(r.btw) || 21,
+          materiaalCode: r.materiaal_code,
+          laatstGebruikt: r.laatst_gebruikt,
+        }));
+        referentieRegels = kiesRelevanteReferentie(omschrijving, alle, 200);
+      }
+    }
+
+    // Terugval: tabel nog niet gesynchroniseerd — live aanvaarde offertes
+    // ophalen zoals voorheen (kleine, snelle deelverzameling).
     const histRes = await outsmartGet(base, token, softwareToken, 'quotations', {
       key: 'quo_status',
       operator: 'eq',
       value: 'ACCEPTED',
     });
     const historische: any[] = histRes.response ?? [];
-    const referentieRegels = historische
-      .flatMap((q) => q.qln_lines ?? [])
-      .filter((l: any) => l.qln_description && Number(l.qln_price) > 0)
-      .map((l: any) => ({
-        omschrijving: l.qln_description,
-        eenheid: l.qln_unit || null,
-        prijs: Number(l.qln_price) || 0,
-        inkoopprijs: Number(l.purchase_price) || 0,
-        btw: Number(l.qln_vat_percentage) || 21,
-        materiaalCode: l.qln_material_code || null,
-      }))
-      .slice(0, 400);
+    if (referentieRegels.length === 0) {
+      referentieRegels = historische
+        .flatMap((q) => q.qln_lines ?? [])
+        .filter((l: any) => l.qln_description && Number(l.qln_price) > 0)
+        .map((l: any) => ({
+          omschrijving: l.qln_description,
+          eenheid: l.qln_unit || null,
+          prijs: Number(l.qln_price) || 0,
+          inkoopprijs: Number(l.purchase_price) || 0,
+          btw: Number(l.qln_vat_percentage) || 21,
+          materiaalCode: l.qln_material_code || null,
+        }))
+        .slice(0, 400);
+    }
 
     // 1b. Outsmart vereist een "scheme" (quo_qus_id) om een offerte aan te
     //     maken ("Scheme not found" anders) — dat blijkt een eigenschap van
@@ -111,9 +142,9 @@ Deno.serve(async (req) => {
 Klant: ${klantNaam || '(onbekend)'}
 Gevraagd werk: ${omschrijving}
 
-Hieronder staat een lijst van regels uit eerder aanvaarde offertes (echte, actuele prijszetting van dit bedrijf, inclusief het artikelnummer waar van toepassing). Gebruik ze als referentie om realistische offerteregels voor te stellen voor het gevraagde werk — kopieer gelijkaardige regels waar mogelijk (zelfde omschrijving/prijs/artikelnummer), en pas aantallen aan op basis van wat logisch is voor het gevraagde werk. Neem het artikelnummer exact over wanneer een regel een bestaand product is; laat het weg bij arbeid/werkuren. Verzin geen onrealistische prijzen of artikelnummers; baseer je zoveel mogelijk op de referentieregels.
+Hieronder staat een lijst van regels uit eerdere offertes van dit bedrijf (elke status — ook niet-aanvaarde offertes bevatten bruikbare, echte prijszetting — al dan niet uitgevoerd, geweigerd, enz., geselecteerd op relevantie voor dit gevraagde werk). Gebruik ze als referentie om realistische offerteregels voor te stellen — kopieer gelijkaardige regels waar mogelijk (zelfde omschrijving/prijs/artikelnummer), en pas aantallen aan op basis van wat logisch is voor het gevraagde werk. Neem het artikelnummer exact over wanneer een regel een bestaand product is; laat het weg bij arbeid/werkuren. Verzin geen onrealistische prijzen of artikelnummers; baseer je zoveel mogelijk op de referentieregels.
 
-Referentieregels (JSON, max 400):
+Referentieregels (JSON):
 ${JSON.stringify(referentieRegels)}
 
 Voor arbeid/werkuren: gebruik GEEN generieke "Werkuren"-regel, maar kies per regel de juiste rol (hourtypeCode) uit deze lijst, op basis van wie het werk uitvoert:
@@ -253,6 +284,30 @@ Splits arbeid over meerdere regels als verschillende rollen werk uitvoeren (bv. 
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+/** Selecteert de meest relevante referentieregels voor deze aanvraag uit de
+ *  volledige (gededupliceerde) prijsreferentie — op woord-overlap met de
+ *  gevraagde omschrijving, niet blind afgekapt. Bij geen enkele match (bv.
+ *  heel generieke vraag) valt terug op de meest recent gebruikte regels. */
+function kiesRelevanteReferentie(omschrijving: string, alle: any[], max: number): any[] {
+  const woorden = (s: string) =>
+    new Set((s.toLowerCase().match(/[a-z0-9À-ž]{3,}/g) ?? []));
+  const queryWoorden = woorden(omschrijving);
+
+  const gescoord = alle.map((r) => {
+    const rWoorden = woorden(r.omschrijving ?? '');
+    let score = 0;
+    for (const w of queryWoorden) if (rWoorden.has(w)) score++;
+    return { r, score };
+  });
+
+  gescoord.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return (b.r.laatstGebruikt ?? '').localeCompare(a.r.laatstGebruikt ?? '');
+  });
+
+  return gescoord.slice(0, max).map((g) => g.r);
 }
 
 /** Meest voorkomende quo_qus_id over een lijst offertes — gebruikt als

@@ -1,9 +1,12 @@
 // Wachtelaer Veldapp — "Project" dashboard (hidden tab, one account only):
-// anchored on ACCEPTED quotations in Outsmart (the already-proven filter
-// from outsmart-offertes) — every dossier starts life as an accepted
-// offerte, so that's the source of truth, not "active projects" (a project
-// may not exist yet, or may no longer be active, while the offerte itself
-// is still the thing to track).
+// anchored on ACCEPTED + EXECUTED quotations in Outsmart (the already-
+// proven filter from outsmart-offertes) — every dossier starts life as an
+// accepted offerte, so that's the source of truth, not "active projects" (a
+// project may not exist yet, or may no longer be active, while the offerte
+// itself is still the thing to track). EXECUTED is included alongside
+// ACCEPTED on explicit request — ACCEPTED alone only covers the last ~5
+// months (offertes move to EXECUTED once the job is done, which is most of
+// the real history: 447 EXECUTED vs 40 ACCEPTED at time of writing).
 //
 // Each accepted quotation is then linked to:
 //  - its project (werf-fase/periode), if one exists yet
@@ -61,20 +64,33 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const [quotationsRes, projectsRes] = await Promise.all([
+    const [acceptedRes, executedRes, activeProjectsRes, inactiveProjectsRes] = await Promise.all([
       outsmartGet(base, token, softwareToken, 'quotations', {
         key: 'quo_status',
         operator: 'eq',
         value: 'ACCEPTED',
+      }),
+      outsmartGet(base, token, softwareToken, 'quotations', {
+        key: 'quo_status',
+        operator: 'eq',
+        value: 'EXECUTED',
       }),
       outsmartGet(base, token, softwareToken, 'projects', {
         key: 'active',
         operator: 'eq',
         value: '1',
       }),
+      // Een uitgevoerde offerte heeft vaak een project dat niet meer
+      // "actief" staat — zonder dit erbij op te halen zou de werf-fase/
+      // periode voor afgewerkte dossiers altijd leeg blijven.
+      outsmartGet(base, token, softwareToken, 'projects', {
+        key: 'active',
+        operator: 'eq',
+        value: '0',
+      }),
     ]);
-    const quotaties: any[] = quotationsRes.response ?? [];
-    const alleActieveProjecten: any[] = projectsRes.response ?? [];
+    const quotaties: any[] = [...(acceptedRes.response ?? []), ...(executedRes.response ?? [])];
+    const alleProjecten: any[] = [...(activeProjectsRes.response ?? []), ...(inactiveProjectsRes.response ?? [])];
 
     const debtorNrs = [...new Set(quotaties.map((q) => q.quo_quotation_debtor_nr).filter(Boolean))];
 
@@ -113,7 +129,7 @@ Deno.serve(async (req) => {
 
       // A project's description reads "Werkbon conform offerte <nummer>" —
       // that's the only reliable link back to this quotation.
-      const project = alleActieveProjecten.find((p) =>
+      const project = alleProjecten.find((p) =>
         (p.description ?? '').includes(q.quo_number_formatted)
       );
 
