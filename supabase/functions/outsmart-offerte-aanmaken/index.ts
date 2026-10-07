@@ -93,7 +93,32 @@ ${JSON.stringify(referentieRegels)}
 Antwoord UITSLUITEND met geldige JSON, exact in dit formaat, zonder uitleg erbuiten:
 {"regels": [{"omschrijving": "<tekst>", "aantal": <getal>, "eenheid": "<bv. 'uur', 'stuk', 'm'>", "prijs": <getal, excl. btw per eenheid>, "inkoopprijs": <getal, kostprijs per eenheid, 0 als arbeid>, "btw": <21 of 6>}], "toelichting": "<max 1 korte zin, Nederlands, waarom deze regels>"}`;
 
-    const parsed = await vraagClaudeJson(anthropicKey, prompt, 2048);
+    const parsed = await vraagClaudeTool(anthropicKey, prompt, 2048, {
+      name: 'stel_offerteregels_voor',
+      description: 'Stelt offerteregels voor op basis van het gevraagde werk en historische prijszetting.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          regels: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                omschrijving: { type: 'string' },
+                aantal: { type: 'number' },
+                eenheid: { type: 'string' },
+                prijs: { type: 'number', description: 'Excl. btw, per eenheid' },
+                inkoopprijs: { type: 'number', description: 'Kostprijs per eenheid, 0 als arbeid' },
+                btw: { type: 'number', description: '21 of 6' },
+              },
+              required: ['omschrijving', 'aantal', 'eenheid', 'prijs', 'btw'],
+            },
+          },
+          toelichting: { type: 'string', description: 'Max 1 korte zin, Nederlands' },
+        },
+        required: ['regels', 'toelichting'],
+      },
+    });
     const voorgesteldeRegels: any[] = Array.isArray(parsed.regels) ? parsed.regels : [];
     if (voorgesteldeRegels.length === 0) throw new Error('De agent stelde geen offerteregels voor');
 
@@ -207,22 +232,27 @@ async function outsmartPost(base: string, token: string, softwareToken: string, 
   return body;
 }
 
-/** Vraagt Claude om JSON en maakt dat ook afdwingbaar: de assistant-beurt
- *  wordt geprefilld met "{" (Anthropic's eigen techniek om vrije tekst
- *  rond het antwoord te vermijden), in plaats van enkel op een regex te
- *  vertrouwen om JSON uit vrije tekst te vissen — die faalde zodra Claude
- *  iets anders dan pure JSON terugstuurde. */
-async function vraagClaudeJson(anthropicKey: string, prompt: string, maxTokens: number): Promise<any> {
+/** Dwingt een gestructureerd antwoord af via Anthropic's tool-use (de
+ *  assistant-beurt prefillen met "{" wordt door dit model niet ondersteund
+ *  — "This model does not support assistant message prefill"). Met
+ *  tool_choice vast op één tool krijgen we het antwoord al als geparste
+ *  JSON terug (het `input`-veld van het tool_use-blok), geen eigen
+ *  tekst-naar-JSON-extractie meer nodig. */
+async function vraagClaudeTool(
+  anthropicKey: string,
+  prompt: string,
+  maxTokens: number,
+  tool: { name: string; description: string; input_schema: unknown }
+): Promise<any> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
     body: JSON.stringify({
       model: 'claude-sonnet-5',
       max_tokens: maxTokens,
-      messages: [
-        { role: 'user', content: prompt },
-        { role: 'assistant', content: '{' },
-      ],
+      tools: [tool],
+      tool_choice: { type: 'tool', name: tool.name },
+      messages: [{ role: 'user', content: prompt }],
     }),
   });
 
@@ -232,19 +262,9 @@ async function vraagClaudeJson(anthropicKey: string, prompt: string, maxTokens: 
   }
 
   const body = await res.json();
-  const continuation: string = body.content?.[0]?.text ?? '';
-  const fullText = '{' + continuation;
-  try {
-    return JSON.parse(fullText);
-  } catch {
-    const lastBrace = fullText.lastIndexOf('}');
-    if (lastBrace === -1) throw new Error(`Kon het antwoord van de agent niet als JSON lezen: ${fullText.slice(0, 300)}`);
-    try {
-      return JSON.parse(fullText.slice(0, lastBrace + 1));
-    } catch {
-      throw new Error(`Kon het antwoord van de agent niet als JSON lezen: ${fullText.slice(0, 300)}`);
-    }
-  }
+  const toolUse = (body.content ?? []).find((c: any) => c.type === 'tool_use');
+  if (!toolUse) throw new Error('Geen tool-aanroep gevonden in het antwoord van de agent');
+  return toolUse.input;
 }
 
 function json(body: unknown, status = 200) {

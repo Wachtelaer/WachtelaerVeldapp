@@ -82,7 +82,29 @@ Antwoord UITSLUITEND met geldige JSON, exact in dit formaat, zonder uitleg errbu
 {"adviezen": [{"id": "<dossier id>", "prioriteit": "hoog" | "normaal" | "laag", "advies": "<max 1 korte zin, Nederlands>"}], "aandachtspunten": ["<max 3 algemene, bedrijfsbrede observaties over de hele lijst samen, Nederlands>"]}`;
 
   try {
-    const parsed = await vraagClaudeJson(anthropicKey, prompt, 2048);
+    const parsed = await vraagClaudeTool(anthropicKey, prompt, 2048, {
+      name: 'geef_advies',
+      description: 'Rapporteert prioriteit + advies per dossier, plus bedrijfsbrede aandachtspunten.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          adviezen: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                prioriteit: { type: 'string', enum: ['hoog', 'normaal', 'laag'] },
+                advies: { type: 'string' },
+              },
+              required: ['id', 'prioriteit', 'advies'],
+            },
+          },
+          aandachtspunten: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['adviezen', 'aandachtspunten'],
+      },
+    });
 
     return json({
       adviezen: Array.isArray(parsed.adviezen) ? parsed.adviezen : [],
@@ -93,12 +115,18 @@ Antwoord UITSLUITEND met geldige JSON, exact in dit formaat, zonder uitleg errbu
   }
 });
 
-/** Vraagt Claude om JSON en maakt dat ook afdwingbaar: de assistant-beurt
- *  wordt geprefilld met "{" (Anthropic's eigen techniek om vrije tekst
- *  rond het antwoord te vermijden), in plaats van enkel op een regex te
- *  vertrouwen om JSON uit vrije tekst te vissen — die faalde zodra Claude
- *  iets anders dan pure JSON terugstuurde. */
-async function vraagClaudeJson(anthropicKey: string, prompt: string, maxTokens: number): Promise<any> {
+/** Dwingt een gestructureerd antwoord af via Anthropic's tool-use (de
+ *  assistant-beurt prefillen met "{" wordt door dit model niet ondersteund
+ *  — "This model does not support assistant message prefill"). Met
+ *  tool_choice vast op één tool krijgen we het antwoord al als geparste
+ *  JSON terug (het `input`-veld van het tool_use-blok), geen eigen
+ *  tekst-naar-JSON-extractie meer nodig. */
+async function vraagClaudeTool(
+  anthropicKey: string,
+  prompt: string,
+  maxTokens: number,
+  tool: { name: string; description: string; input_schema: unknown }
+): Promise<any> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -109,10 +137,9 @@ async function vraagClaudeJson(anthropicKey: string, prompt: string, maxTokens: 
     body: JSON.stringify({
       model: 'claude-sonnet-5',
       max_tokens: maxTokens,
-      messages: [
-        { role: 'user', content: prompt },
-        { role: 'assistant', content: '{' },
-      ],
+      tools: [tool],
+      tool_choice: { type: 'tool', name: tool.name },
+      messages: [{ role: 'user', content: prompt }],
     }),
   });
 
@@ -122,19 +149,9 @@ async function vraagClaudeJson(anthropicKey: string, prompt: string, maxTokens: 
   }
 
   const body = await res.json();
-  const continuation: string = body.content?.[0]?.text ?? '';
-  const fullText = '{' + continuation;
-  try {
-    return JSON.parse(fullText);
-  } catch {
-    const lastBrace = fullText.lastIndexOf('}');
-    if (lastBrace === -1) throw new Error(`Kon het antwoord van de agent niet als JSON lezen: ${fullText.slice(0, 300)}`);
-    try {
-      return JSON.parse(fullText.slice(0, lastBrace + 1));
-    } catch {
-      throw new Error(`Kon het antwoord van de agent niet als JSON lezen: ${fullText.slice(0, 300)}`);
-    }
-  }
+  const toolUse = (body.content ?? []).find((c: any) => c.type === 'tool_use');
+  if (!toolUse) throw new Error('Geen tool-aanroep gevonden in het antwoord van de agent');
+  return toolUse.input;
 }
 
 function json(body: unknown, status = 200) {
