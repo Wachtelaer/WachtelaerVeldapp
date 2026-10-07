@@ -79,6 +79,25 @@ Deno.serve(async (req) => {
       }))
       .slice(0, 400);
 
+    // 1b. Outsmart vereist een "scheme" (quo_qus_id) om een offerte aan te
+    //     maken ("Scheme not found" anders) — dat blijkt een eigenschap van
+    //     de KLANT te zijn (altijd hetzelfde binnen alle offertes van
+    //     eenzelfde debiteur, ontdekt via outsmart-probe), niet iets dat
+    //     Outsmart zelf toekent. Haal het dus op uit deze klant zijn eigen
+    //     offerte-historie; bij een klant zonder eigen historie (echt
+    //     nieuw) valt terug op de meest voorkomende scheme bedrijfsbreed.
+    const debtorQuotesRes = await outsmartGet(base, token, softwareToken, 'quotations', {
+      key: 'quo_quotation_debtor_nr',
+      operator: 'eq',
+      value: debtorNr,
+    }).catch(() => ({ response: [] }));
+    const debtorQuotes: any[] = debtorQuotesRes.response ?? [];
+    const resolvedQusId =
+      debtorQuotes.find((q) => q.quo_qus_id)?.quo_qus_id ?? pickMostCommonQusId(historische);
+    if (!resolvedQusId) {
+      throw new Error('Kon geen quotation-scheme (quo_qus_id) bepalen voor deze klant');
+    }
+
     // 2. Claude laten kiezen/voorstellen welke regels nodig zijn.
     const prompt = `Je bent een offerte-assistent voor Wachtelaer, een Belgische verwarmings- en sanitairinstallateur. Een klant vraagt het volgende werk:
 
@@ -160,6 +179,7 @@ Antwoord UITSLUITEND met geldige JSON, exact in dit formaat, zonder uitleg erbui
     const vervaldatum = new Date(vandaag.getTime() + 30 * 24 * 60 * 60 * 1000);
     const createPayload = {
       quo_quotation_debtor_nr: debtorNr,
+      quo_qus_id: resolvedQusId,
       quotation_type: 'quotation',
       quo_currency_code: 'EUR',
       quo_currency_symbol: '€',
@@ -205,6 +225,27 @@ Antwoord UITSLUITEND met geldige JSON, exact in dit formaat, zonder uitleg erbui
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+/** Meest voorkomende quo_qus_id over een lijst offertes — gebruikt als
+ *  bedrijfsbrede terugval wanneer een klant nog geen eigen offerte-
+ *  historie heeft om de scheme uit af te leiden. */
+function pickMostCommonQusId(quotes: any[]): string | null {
+  const freq: Record<string, number> = {};
+  for (const q of quotes) {
+    if (!q.quo_qus_id) continue;
+    const id = String(q.quo_qus_id);
+    freq[id] = (freq[id] ?? 0) + 1;
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [id, count] of Object.entries(freq)) {
+    if (count > bestCount) {
+      best = id;
+      bestCount = count;
+    }
+  }
+  return best;
 }
 
 async function outsmartGet(base: string, token: string, softwareToken: string, path: string, params: Record<string, string>) {
