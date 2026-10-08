@@ -407,8 +407,13 @@ function woordenSet(s: string): Set<string> {
 
 /** Minimum genormaliseerde score (zie scoorGenormaliseerd) om nog als een
  *  echte match te tellen — sluit lange-staart ruis uit (kandidaten die
- *  toevallig één algemeen woord delen) uit het gemiddelde/de referentie. */
-const MIN_RELEVANTIE_SCORE = 0.2;
+ *  toevallig één algemeen woord delen) uit het gemiddelde/de referentie.
+ *  Live vastgesteld: bij de cosine-score (zie scoorGenormaliseerd) vormen de
+ *  écht specifieke matches voor een gevraagd werk een duidelijk afgescheiden
+ *  cluster rond en boven 0.3 (bv. 9 historische "vervangen elektrische
+ *  boiler"-offertes), met een scherpe val daaronder naar generieke ruis
+ *  ("Offerte", "Offerte PV-installatie") — 0.3 zit stabiel in die kloof. */
+const MIN_RELEVANTIE_SCORE = 0.3;
 
 /** IDF per woord over een corpus rijen: hoe zeldzamer een woord in het
  *  corpus, hoe hoger het gewicht. Zonder dit tellen generieke woorden
@@ -429,16 +434,36 @@ function berekenIdf(alleWoorden: Set<string>[]): Map<string, number> {
   return idf;
 }
 
-/** Genormaliseerde relevantiescore (0–1): welk aandeel van het (IDF-
- *  gewogen) gewicht van de KANDIDAAT-omschrijving ook in de gevraagde
- *  omschrijving voorkomt. Een kandidaat met veel eigen, niet-gedeelde
- *  inhoudelijke woorden (bv. "gasketel", "condenserende", "gaswandketel"
- *  in een omschrijving die toevallig ook "elektrische boiler" vermeldt)
- *  scoort daardoor laag, ook al is het aantal gedeelde woorden op zich
- *  niet nul — in tegenstelling tot een pure telling van gedeelde woorden,
- *  die zo'n kandidaat evenveel gewicht gaf als een vrijwel volledig
- *  overlappende, echt gelijkaardige omschrijving. */
-function scoorGenormaliseerd(queryWoorden: Set<string>, kandidaatWoorden: Set<string>, idf: Map<string, number>): number {
+/** Genormaliseerde relevantiescore (0–1): een cosine-achtige score die het
+ *  gedeelde (IDF-gewogen) gewicht normaliseert op ZOWEL het gewicht van de
+ *  KANDIDAAT- als dat van de QUERY-omschrijving (vierkantswortel van hun
+ *  product), niet enkel op dat van de kandidaat.
+ *
+ *  Enkel normaliseren op het kandidaat-gewicht (eerdere versie) bleek zelf
+ *  weer een nieuwe, analoge bias te hebben aan de materiaal-matching-bug
+ *  (zie vind_materiaal_match, migratie 0033): een kort, generiek kandidaat
+ *  ("Offerte", "Offerte PV-installatie") met maar 1-2 woorden haalt dan
+ *  triviaal een score van 1.0 zodra die paar woorden toevallig óók in de
+ *  (veel langere) gevraagde omschrijving voorkomen — ongeacht of de
+ *  kandidaat inhoudelijk iets met de aanvraag te maken heeft. Live
+ *  vastgesteld: zo kreeg een eenvoudige elektrische-boiler-vervanging
+ *  (geschatte 10-20u) een gemiddelde van 25u doordat een PV-installatie
+ *  (45u) en tientallen generieke "Offerte (vervangen) boiler"-rijen
+ *  evenveel/meer gewicht kregen als de écht specifieke historische
+ *  "vervangen elektrische boiler"-offertes.
+ *
+ *  Door ook het QUERY-gewicht in de noemer op te nemen, weegt een kort
+ *  kandidaat dat toevallig volledig in een lange, inhoudelijke query
+ *  voorkomt nog maar zwak mee (de query's eigen, niet-gedeelde gewicht
+ *  drukt de score omlaag) — vergelijkbaar met hoe plain similarity() de
+ *  materiaal-matching-bug oploste door niet enkel op het kortste-string-
+ *  gewicht te normaliseren. */
+function scoorGenormaliseerd(
+  queryWoorden: Set<string>,
+  kandidaatWoorden: Set<string>,
+  idf: Map<string, number>,
+  totaalQuery: number
+): number {
   let gedeeld = 0;
   let totaalKandidaat = 0;
   for (const w of kandidaatWoorden) {
@@ -446,7 +471,16 @@ function scoorGenormaliseerd(queryWoorden: Set<string>, kandidaatWoorden: Set<st
     totaalKandidaat += gewicht;
     if (queryWoorden.has(w)) gedeeld += gewicht;
   }
-  return totaalKandidaat > 0 ? gedeeld / totaalKandidaat : 0;
+  const noemer = Math.sqrt(totaalKandidaat * totaalQuery);
+  return noemer > 0 ? gedeeld / noemer : 0;
+}
+
+/** Som van de IDF-gewichten van de gevraagde omschrijving zelf — het
+ *  QUERY-gewicht gebruikt in scoorGenormaliseerd's noemer, zie hierboven. */
+function berekenTotaalQuery(queryWoorden: Set<string>, idf: Map<string, number>): number {
+  let totaal = 0;
+  for (const w of queryWoorden) totaal += idf.get(w) ?? 1;
+  return totaal;
 }
 
 /** Selecteert de meest relevante rijen voor deze aanvraag — op genormaliseerde,
@@ -458,8 +492,9 @@ function kiesRelevanteReferentie(omschrijving: string, alle: any[], max: number)
   const queryWoorden = woordenSet(omschrijving);
   const kandidaatWoorden = alle.map((r) => woordenSet(r.omschrijving ?? ''));
   const idf = berekenIdf(kandidaatWoorden);
+  const totaalQuery = berekenTotaalQuery(queryWoorden, idf);
 
-  const gescoord = alle.map((r, i) => ({ r, score: scoorGenormaliseerd(queryWoorden, kandidaatWoorden[i], idf) }));
+  const gescoord = alle.map((r, i) => ({ r, score: scoorGenormaliseerd(queryWoorden, kandidaatWoorden[i], idf, totaalQuery) }));
 
   gescoord.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
@@ -488,6 +523,7 @@ function berekenAanbevolenTotaalUren(
   const queryWoorden = woordenSet(omschrijving);
   const kandidaatWoorden = rijen.map((r) => woordenSet(r.omschrijving ?? ''));
   const idf = berekenIdf(kandidaatWoorden);
+  const totaalQuery = berekenTotaalQuery(queryWoorden, idf);
 
   let totaalGewogen = 0;
   let totaalGewicht = 0;
@@ -495,7 +531,7 @@ function berekenAanbevolenTotaalUren(
 
   rijen.forEach((rij, i) => {
     if (!(rij.totaalUren > 0)) return;
-    const score = scoorGenormaliseerd(queryWoorden, kandidaatWoorden[i], idf);
+    const score = scoorGenormaliseerd(queryWoorden, kandidaatWoorden[i], idf, totaalQuery);
     if (score < MIN_RELEVANTIE_SCORE) return;
 
     totaalGewogen += rij.totaalUren * score;
