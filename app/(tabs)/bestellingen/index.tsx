@@ -3,9 +3,11 @@ import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
+import { Button } from '@/components/ui/Button';
 import { KpiTile, SectionLabel, Tag } from '@/components/ui/Basics';
 import { useAuth } from '@/context/AuthProvider';
 import { listBestellijst, type BestellijstItem } from '@/lib/api/outsmartBestellingen';
+import { exporteerAlsPdf } from '@/lib/pdfExport';
 import { colors, fonts } from '@/lib/theme';
 
 function formatAantal(n: number, eenheid: string): string {
@@ -16,6 +18,41 @@ function formatAantal(n: number, eenheid: string): string {
 function formatDatum(iso: string | null): string {
   if (!iso) return 'nog geen werf gepland';
   return new Date(iso).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function bouwBestellijstHtml(items: BestellijstItem[]): string {
+  const rij = (item: BestellijstItem) => `
+    <tr>
+      <td>
+        <strong>${escapeHtml(item.omschrijving)}</strong><br/>
+        <span style="color:#6a6768;font-size:8.5px;">${escapeHtml(item.materiaalCode)}</span>
+        <div class="offertes">${item.offertes
+          .map((o) => `${escapeHtml(o.offerteNummer)} — ${escapeHtml(o.klantNaam || '(klant onbekend)')} (${formatAantal(o.aantal, item.eenheid)})`)
+          .join('<br/>')}</div>
+      </td>
+      <td>${formatAantal(item.totaalNodig, item.eenheid)}</td>
+      <td>${formatAantal(item.voorradig, item.eenheid)}</td>
+      <td class="${item.opVoorraad ? '' : 'negatief'}">${formatAantal(Math.abs(item.tekort), item.eenheid)}</td>
+      <td>${formatDatum(item.vroegsteDatum)}</td>
+      <td><span class="tag ${item.opVoorraad ? '' : 'tag-bestellen'}">${item.opVoorraad ? 'Op voorraad' : 'Bestellen'}</span></td>
+    </tr>`;
+
+  const tabel = (titel: string, rijen: BestellijstItem[]) =>
+    rijen.length === 0
+      ? ''
+      : `<div class="sectie-titel">${titel}</div>
+         <table>
+           <thead><tr><th>Materiaal</th><th>Nodig</th><th>Voorradig</th><th>Tekort</th><th>Vroegste uitvoering</th><th>Status</th></tr></thead>
+           <tbody>${rijen.map(rij).join('')}</tbody>
+         </table>`;
+
+  const teBestellen = items.filter((i) => !i.opVoorraad);
+  const opVoorraad = items.filter((i) => i.opVoorraad);
+  return tabel('Moet besteld worden', teBestellen) + tabel('Op voorraad', opVoorraad);
 }
 
 function BestellijstCard({ item }: { item: BestellijstItem }) {
@@ -67,6 +104,8 @@ export default function BestellingenScreen() {
   const [bestellijst, setBestellijst] = useState<BestellijstItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [exportBezig, setExportBezig] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!profile) return;
@@ -88,6 +127,23 @@ export default function BestellingenScreen() {
     setRefreshing(true);
     await load();
     setRefreshing(false);
+  };
+
+  const downloadPdf = async () => {
+    if (!bestellijst || bestellijst.length === 0) return;
+    setExportBezig(true);
+    setExportError(null);
+    try {
+      await exporteerAlsPdf({
+        titel: 'Bestellijst',
+        ondertitel: `Op basis van aanvaarde offertes — ${new Date().toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+        lichaamHtml: bouwBestellijstHtml(bestellijst),
+      });
+    } catch (e: any) {
+      setExportError(e.message ?? 'PDF aanmaken mislukt');
+    } finally {
+      setExportBezig(false);
+    }
   };
 
   const teBestellen = (bestellijst ?? []).filter((b) => !b.opVoorraad);
@@ -115,6 +171,16 @@ export default function BestellingenScreen() {
             <KpiTile value={String(bestellijst.length)} label="artikelen totaal" />
           </View>
         ) : null}
+
+        {bestellijst && bestellijst.length > 0 ? (
+          <Button
+            label={exportBezig ? 'PDF aanmaken…' : 'Download als PDF'}
+            variant="secondary"
+            onPress={downloadPdf}
+            loading={exportBezig}
+          />
+        ) : null}
+        {exportError ? <Text style={styles.error}>{exportError}</Text> : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {bestellijst === null && !error ? <ActivityIndicator color={colors.accent} style={{ marginTop: 24 }} /> : null}
