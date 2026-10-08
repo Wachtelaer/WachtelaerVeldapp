@@ -67,9 +67,9 @@ Deno.serve(async (req) => {
     //    Daarna op relevantie voor déze aanvraag geselecteerd (woord-
     //    overlap met de omschrijving), niet blind afgekapt.
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const adminClient = serviceRoleKey ? createClient(supabaseUrl, serviceRoleKey) : null;
     let referentieRegels: any[] = [];
-    if (serviceRoleKey) {
-      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    if (adminClient) {
       const { data: referentieRows } = await adminClient
         .from('outsmart_prijsreferentie')
         .select('omschrijving, eenheid, prijs, inkoopprijs, btw, materiaal_code, sectie, laatst_gebruikt');
@@ -155,8 +155,7 @@ Deno.serve(async (req) => {
     //     naar het deterministisch berekende historische totaal.
     let duurReferentie: any[] = [];
     let aanbevolenTotaalUren: { gemiddelde: number; aantalMatches: number } | null = null;
-    if (serviceRoleKey) {
-      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    if (adminClient) {
       const { data: duurRows } = await adminClient
         .from('outsmart_duurreferentie')
         .select('omschrijving, totaal_uren, datum');
@@ -246,6 +245,34 @@ Belangrijk over het AANTAL uren: ${
     });
     const voorgesteldeRegels: any[] = Array.isArray(parsed.regels) ? parsed.regels : [];
     if (voorgesteldeRegels.length === 0) throw new Error('De agent stelde geen offerteregels voor');
+
+    // 2a. Artikelnummer + actuele prijs: Claude verzon tot nu toe zelf een
+    //     artikelnummer (meestal leeg) en een prijs op basis van de
+    //     (mogelijk verouderde, bevroren) prijsreferentie. Elke materiaal-
+    //     regel wordt hier gecontroleerd tegen de échte, actuele
+    //     artikelcatalogus (outsmart_materialen, zie outsmart-sync-
+    //     materialen) via trigram-gelijkenis op de omschrijving — bij een
+    //     voldoende zekere match wordt artikelnummer, omschrijving én prijs
+    //     overschreven met het echte artikel; anders blijft Claude's eigen
+    //     voorstel gewoon staan (zelfde "nooit blind vertrouwen, wel altijd
+    //     een werkende terugval"-patroon als bij de uren).
+    const MIN_MATERIAAL_SCORE = 0.55;
+    if (adminClient) {
+      await Promise.all(
+        voorgesteldeRegels.map(async (r) => {
+          if (r.hourtypeCode) return; // arbeid: geen artikel om op te zoeken
+          const { data } = await adminClient.rpc('vind_materiaal_match', {
+            zoekterm: String(r.omschrijving ?? ''),
+            min_score: MIN_MATERIAAL_SCORE,
+          });
+          const match = Array.isArray(data) ? data[0] : null;
+          if (!match) return;
+          r.materiaalCode = match.code;
+          r.omschrijving = match.omschrijving;
+          if (Number(match.prijs) > 0) r.prijs = Number(match.prijs);
+        })
+      );
+    }
 
     // 2b. Claude's eigen "aantal" per arbeidsregel is enkel een voorlopige
     //     VERDELING tussen rollen — het TOTAAL wordt hier herschaald naar

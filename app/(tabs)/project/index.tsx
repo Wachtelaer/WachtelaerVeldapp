@@ -12,7 +12,7 @@ import { listOpmetingen, type OpmetingListItem } from '@/lib/api/opmetingen';
 import { listWervenWithSummary, type WerfListItem } from '@/lib/api/werven';
 import { vraagAgentAdvies, type AgentAdvies } from '@/lib/api/outsmartAgent';
 import { maakOfferteAan, type NieuweOfferte } from '@/lib/api/outsmartOfferte';
-import { syncPrijsreferentie } from '@/lib/api/outsmartSync';
+import { syncMaterialen, syncPrijsreferentie } from '@/lib/api/outsmartSync';
 import { lijktOpzelfde } from '@/lib/dossierMatching';
 import { berekenNacalculatie, voorgesteldeActie } from '@/lib/dossierSuggesties';
 import { colors, fonts } from '@/lib/theme';
@@ -264,6 +264,10 @@ export default function ProjectScreen() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncResultaat, setSyncResultaat] = useState<string | null>(null);
 
+  const [materialenSyncBezig, setMaterialenSyncBezig] = useState(false);
+  const [materialenSyncError, setMaterialenSyncError] = useState<string | null>(null);
+  const [materialenSyncResultaat, setMaterialenSyncResultaat] = useState<string | null>(null);
+
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALLE');
 
   const load = useCallback(async () => {
@@ -326,6 +330,22 @@ export default function ProjectScreen() {
     }
   };
 
+  const syncMaterialenCatalogus = async () => {
+    setMaterialenSyncBezig(true);
+    setMaterialenSyncError(null);
+    setMaterialenSyncResultaat(null);
+    try {
+      const { totaalArtikelenOpgehaald, totaalArtikelenGesynchroniseerd } = await syncMaterialen();
+      setMaterialenSyncResultaat(
+        `${totaalArtikelenGesynchroniseerd} van ${totaalArtikelenOpgehaald} artikelen gesynchroniseerd`
+      );
+    } catch (e: any) {
+      setMaterialenSyncError(e.message ?? 'Synchronisatie mislukt');
+    } finally {
+      setMaterialenSyncBezig(false);
+    }
+  };
+
   const dossiersGefilterd = (dossiers ?? []).filter(
     (d) => statusFilter === 'ALLE' || d.offertes[0]?.status === statusFilter
   );
@@ -358,6 +378,15 @@ export default function ProjectScreen() {
         />
         {syncError ? <Text style={styles.error}>{syncError}</Text> : null}
         {syncResultaat ? <Text style={styles.aandachtspuntText}>{syncResultaat}</Text> : null}
+
+        <Button
+          label={materialenSyncBezig ? 'Artikelcatalogus synchroniseren…' : 'Synchroniseer materialen (artikelcatalogus)'}
+          variant="secondary"
+          onPress={syncMaterialenCatalogus}
+          loading={materialenSyncBezig}
+        />
+        {materialenSyncError ? <Text style={styles.error}>{materialenSyncError}</Text> : null}
+        {materialenSyncResultaat ? <Text style={styles.aandachtspuntText}>{materialenSyncResultaat}</Text> : null}
 
         {dossiers ? <StatusFilterRow waarde={statusFilter} onChange={setStatusFilter} /> : null}
 
