@@ -65,6 +65,12 @@ export default function TabsLayout() {
           options={{ title: 'Project', tabBarIcon: ({ color, size }) => <Ionicons name="flask" color={color} size={size} /> }}
         />
       </Tabs.Protected>
+      <Tabs.Protected guard={canSeeProject}>
+        <Tabs.Screen
+          name="bestellingen"
+          options={{ title: 'Bestellingen', tabBarIcon: ({ color, size }) => <Ionicons name="cart" color={color} size={size} /> }}
+        />
+      </Tabs.Protected>
     </Tabs>
   );
 }
