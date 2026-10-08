@@ -378,58 +378,103 @@ function woordenSet(s: string): Set<string> {
   return new Set((s.toLowerCase().match(/[a-z0-9À-ž]{3,}/g) ?? []));
 }
 
-/** Selecteert de meest relevante rijen voor deze aanvraag — op woord-overlap
- *  met de gevraagde omschrijving, niet blind afgekapt. Bij geen enkele match
- *  (bv. heel generieke vraag) valt terug op de meest recent gebruikte/
- *  uitgevoerde rijen. Generiek herbruikt voor zowel de prijsreferentie als
- *  de duurreferentie (beide hebben een `omschrijving`-veld). */
+/** Minimum genormaliseerde score (zie scoorGenormaliseerd) om nog als een
+ *  echte match te tellen — sluit lange-staart ruis uit (kandidaten die
+ *  toevallig één algemeen woord delen) uit het gemiddelde/de referentie. */
+const MIN_RELEVANTIE_SCORE = 0.2;
+
+/** IDF per woord over een corpus rijen: hoe zeldzamer een woord in het
+ *  corpus, hoe hoger het gewicht. Zonder dit tellen generieke woorden
+ *  ("van", "offerte", "bestaande", die in bijna elke omschrijving
+ *  voorkomen) even zwaar mee als inhoudelijke woorden ("boiler", "ketel",
+ *  "schouw") — live vastgesteld: een offerte voor een elektrische boiler
+ *  kreeg zo een materiaalregel ("Afstoppen leiding ketel") én het
+ *  urengemiddelde van een KETEL-vervanging, puur omdat beide omschrijvingen
+ *  toevallig ook "van"/"bestaande"/"offerte" deelden. */
+function berekenIdf(alleWoorden: Set<string>[]): Map<string, number> {
+  const df = new Map<string, number>();
+  for (const woorden of alleWoorden) {
+    for (const w of woorden) df.set(w, (df.get(w) ?? 0) + 1);
+  }
+  const n = alleWoorden.length || 1;
+  const idf = new Map<string, number>();
+  for (const [w, freq] of df) idf.set(w, Math.log((n + 1) / (freq + 1)) + 1);
+  return idf;
+}
+
+/** Genormaliseerde relevantiescore (0–1): welk aandeel van het (IDF-
+ *  gewogen) gewicht van de KANDIDAAT-omschrijving ook in de gevraagde
+ *  omschrijving voorkomt. Een kandidaat met veel eigen, niet-gedeelde
+ *  inhoudelijke woorden (bv. "gasketel", "condenserende", "gaswandketel"
+ *  in een omschrijving die toevallig ook "elektrische boiler" vermeldt)
+ *  scoort daardoor laag, ook al is het aantal gedeelde woorden op zich
+ *  niet nul — in tegenstelling tot een pure telling van gedeelde woorden,
+ *  die zo'n kandidaat evenveel gewicht gaf als een vrijwel volledig
+ *  overlappende, echt gelijkaardige omschrijving. */
+function scoorGenormaliseerd(queryWoorden: Set<string>, kandidaatWoorden: Set<string>, idf: Map<string, number>): number {
+  let gedeeld = 0;
+  let totaalKandidaat = 0;
+  for (const w of kandidaatWoorden) {
+    const gewicht = idf.get(w) ?? 1;
+    totaalKandidaat += gewicht;
+    if (queryWoorden.has(w)) gedeeld += gewicht;
+  }
+  return totaalKandidaat > 0 ? gedeeld / totaalKandidaat : 0;
+}
+
+/** Selecteert de meest relevante rijen voor deze aanvraag — op genormaliseerde,
+ *  IDF-gewogen woord-overlap met de gevraagde omschrijving (zie
+ *  scoorGenormaliseerd), niet blind afgekapt en niet op een pure telling van
+ *  gedeelde woorden. Generiek herbruikt voor zowel de prijsreferentie als de
+ *  duurreferentie (beide hebben een `omschrijving`-veld). */
 function kiesRelevanteReferentie(omschrijving: string, alle: any[], max: number): any[] {
   const queryWoorden = woordenSet(omschrijving);
+  const kandidaatWoorden = alle.map((r) => woordenSet(r.omschrijving ?? ''));
+  const idf = berekenIdf(kandidaatWoorden);
 
-  const gescoord = alle.map((r) => {
-    const rWoorden = woordenSet(r.omschrijving ?? '');
-    let score = 0;
-    for (const w of queryWoorden) if (rWoorden.has(w)) score++;
-    return { r, score };
-  });
+  const gescoord = alle.map((r, i) => ({ r, score: scoorGenormaliseerd(queryWoorden, kandidaatWoorden[i], idf) }));
 
   gescoord.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
     return (b.r.laatstGebruikt ?? '').localeCompare(a.r.laatstGebruikt ?? '');
   });
 
-  return gescoord.slice(0, max).map((g) => g.r);
+  return gescoord
+    .filter((g) => g.score >= MIN_RELEVANTIE_SCORE)
+    .slice(0, max)
+    .map((g) => g.r);
 }
 
 /** Berekent het verwachte TOTAAL aantal arbeidsuren voor deze klus
  *  deterministisch uit de historiek, in plaats van dit aan Claude's eigen
- *  schatting over te laten: een naar relevantie (woord-overlap met de
- *  gevraagde omschrijving) gewogen gemiddelde over ALLE uitgevoerde
- *  offertes die minstens één woord gemeen hebben met het gevraagde werk.
- *  Offertes zonder enige overlap tellen niet mee — zo trekt een
- *  irrelevante klus het gemiddelde niet scheef. Geeft null als er geen
- *  enkele relevante historische match is; dan blijft Claude's eigen
- *  schatting de terugval. */
+ *  schatting over te laten: een naar genormaliseerde, IDF-gewogen relevantie
+ *  gewogen gemiddelde over ALLE uitgevoerde offertes die voldoende specifiek
+ *  overlappen met het gevraagde werk (zie scoorGenormaliseerd) — een
+ *  omschrijving die enkel oppervlakkig/toevallig overlapt (bv. een KETEL-
+ *  vervanging die "boiler" vermeldt als behouden toestel) weegt daardoor
+ *  nauwelijks nog mee. Geeft null als er geen enkele voldoende relevante
+ *  historische match is; dan blijft Claude's eigen schatting de terugval. */
 function berekenAanbevolenTotaalUren(
   omschrijving: string,
   rijen: { omschrijving: string; totaalUren: number }[]
 ): { gemiddelde: number; aantalMatches: number } | null {
   const queryWoorden = woordenSet(omschrijving);
+  const kandidaatWoorden = rijen.map((r) => woordenSet(r.omschrijving ?? ''));
+  const idf = berekenIdf(kandidaatWoorden);
+
   let totaalGewogen = 0;
   let totaalGewicht = 0;
   let aantalMatches = 0;
 
-  for (const rij of rijen) {
-    if (!(rij.totaalUren > 0)) continue;
-    const rWoorden = woordenSet(rij.omschrijving ?? '');
-    let score = 0;
-    for (const w of queryWoorden) if (rWoorden.has(w)) score++;
-    if (score <= 0) continue;
+  rijen.forEach((rij, i) => {
+    if (!(rij.totaalUren > 0)) return;
+    const score = scoorGenormaliseerd(queryWoorden, kandidaatWoorden[i], idf);
+    if (score < MIN_RELEVANTIE_SCORE) return;
 
     totaalGewogen += rij.totaalUren * score;
     totaalGewicht += score;
     aantalMatches++;
-  }
+  });
 
   if (totaalGewicht <= 0) return null;
   return { gemiddelde: totaalGewogen / totaalGewicht, aantalMatches };
