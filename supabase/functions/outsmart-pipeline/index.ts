@@ -10,7 +10,9 @@
 //
 // Each accepted quotation is then linked to:
 //  - its project (werf-fase/periode), if one exists yet
-//  - its invoices, via inv_quo_id
+//  - its invoices, via inv_quo_id / quo_worksheet_id+inv_worksheet_id / a
+//    textual offerte-number match (see the facturen filter below — inv_quo_id
+//    alone covers almost nothing in practice)
 //  - its material lines (qln_lines, embedded on the quotation itself)
 //
 // Linking note: quo_project_id / inv_project_id exist as fields but are NOT
@@ -142,9 +144,35 @@ Deno.serve(async (req) => {
           eenheid: l.qln_unit || '',
         }));
 
+      // Factuur-koppeling: inv_quo_id (het "voor de hand liggende" veld)
+      // staat zo goed als nooit ingevuld (14 van de 5232 facturen, live
+      // gecontroleerd) — een koppeling enkel daarop laat bijna elk dossier
+      // ten onrechte "nog niet gefactureerd" zien. De betrouwbaarste extra
+      // link is quo_worksheet_id/inv_worksheet_id (dezelfde werkbon-id,
+      // gedeeld door offerte én factuur — recupereert ~8x meer matches),
+      // aangevuld met een tekstuele match op het offertenummer zelf (de
+      // factuur-omschrijving/referentie vermeldt die soms rechtstreeks).
+      // Facturen die enkel een oud werkbonnummer ("WB-2019-xxxxx") als
+      // referentie hebben — de meerderheid van de oudere, vóór dit
+      // offerte-systeem aangemaakte facturen — zijn via de API aan geen
+      // enkel veld op de offerte te koppelen; die blijven onvermijdelijk
+      // als "nog niet gefactureerd" staan, ook al bestaat de factuur wel.
       const invoicesVoorDebtor = invoicesByDebtor.get(q.quo_quotation_debtor_nr) ?? [];
       const facturen = invoicesVoorDebtor
-        .filter((i: any) => i.inv_quo_id === q.quo_id)
+        .filter((i: any) => {
+          if (i.inv_quo_id && String(i.inv_quo_id) === String(q.quo_id)) return true;
+          if (
+            q.quo_worksheet_id &&
+            String(q.quo_worksheet_id) !== '0' &&
+            i.inv_worksheet_id &&
+            String(i.inv_worksheet_id) === String(q.quo_worksheet_id)
+          ) {
+            return true;
+          }
+          const ref = String(i.inv_reference || '').trim();
+          if (ref && ref === q.quo_number_formatted) return true;
+          return String(i.inv_description || '').includes(q.quo_number_formatted);
+        })
         .map((i: any) => ({
           nummer: i.inv_number_formatted,
           status: i.inv_status,

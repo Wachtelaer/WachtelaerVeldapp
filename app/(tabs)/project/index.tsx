@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { KpiTile, SectionLabel, Tag } from '@/components/ui/Basics';
@@ -116,6 +116,28 @@ function NieuweOfferteForm({ dossier }: { dossier: Dossier }) {
           {toelichting ? <Text style={styles.aandachtspuntText}>{toelichting}</Text> : null}
         </View>
       ) : null}
+    </View>
+  );
+}
+
+type StatusFilter = 'ALLE' | 'ACCEPTED' | 'EXECUTED';
+
+function StatusFilterRow({ waarde, onChange }: { waarde: StatusFilter; onChange: (v: StatusFilter) => void }) {
+  const opties: { waarde: StatusFilter; label: string }[] = [
+    { waarde: 'ALLE', label: 'Alles' },
+    { waarde: 'ACCEPTED', label: 'Aanvaard' },
+    { waarde: 'EXECUTED', label: 'Uitgevoerd' },
+  ];
+  return (
+    <View style={styles.filterRow}>
+      {opties.map((o) => (
+        <Pressable
+          key={o.waarde}
+          onPress={() => onChange(o.waarde)}
+          style={[styles.filterChip, waarde === o.waarde && styles.filterChipActief]}>
+          <Text style={[styles.filterChipText, waarde === o.waarde && styles.filterChipTextActief]}>{o.label}</Text>
+        </Pressable>
+      ))}
     </View>
   );
 }
@@ -242,6 +264,8 @@ export default function ProjectScreen() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncResultaat, setSyncResultaat] = useState<string | null>(null);
 
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALLE');
+
   const load = useCallback(async () => {
     if (!profile) return;
     try {
@@ -302,8 +326,11 @@ export default function ProjectScreen() {
     }
   };
 
-  const gefactureerd = (dossiers ?? []).filter((d) => d.facturen.length > 0).length;
-  const teBestellen = (dossiers ?? []).filter((d) => binnenTweeWeken(d.periodeStart) && d.materialen.length > 0);
+  const dossiersGefilterd = (dossiers ?? []).filter(
+    (d) => statusFilter === 'ALLE' || d.offertes[0]?.status === statusFilter
+  );
+  const gefactureerd = dossiersGefilterd.filter((d) => d.facturen.length > 0).length;
+  const teBestellen = dossiersGefilterd.filter((d) => binnenTweeWeken(d.periodeStart) && d.materialen.length > 0);
 
   return (
     <View style={styles.root}>
@@ -316,8 +343,8 @@ export default function ProjectScreen() {
           <Text style={styles.subtitle}>
             Outsmart (offerte, marge, werf-fase, materialen, facturatie) gekoppeld aan onze eigen app (opmeting,
             werfrapporten) op naam — een losse gok, geen harde koppeling, dus controleer een match altijd.
-            Toont offertes met status aanvaard én uitgevoerd. Geografische afspraak-planning voor leads volgt —
-            vereist een echte agenda-koppeling.
+            Haalt offertes met status aanvaard én uitgevoerd op; filter hieronder welke je wil zien. Geografische
+            afspraak-planning voor leads volgt — vereist een echte agenda-koppeling.
           </Text>
         </View>
 
@@ -332,15 +359,17 @@ export default function ProjectScreen() {
         {syncError ? <Text style={styles.error}>{syncError}</Text> : null}
         {syncResultaat ? <Text style={styles.aandachtspuntText}>{syncResultaat}</Text> : null}
 
+        {dossiers ? <StatusFilterRow waarde={statusFilter} onChange={setStatusFilter} /> : null}
+
         {dossiers ? (
           <View style={styles.kpiRow}>
-            <KpiTile value={String(dossiers.length)} label="actieve dossiers" />
+            <KpiTile value={String(dossiersGefilterd.length)} label="dossiers" />
             <KpiTile value={String(gefactureerd)} label="gefactureerd" />
-            <KpiTile value={String(dossiers.length - gefactureerd)} label="nog te factureren" />
+            <KpiTile value={String(dossiersGefilterd.length - gefactureerd)} label="nog te factureren" />
           </View>
         ) : null}
 
-        {dossiers && dossiers.length > 0 ? (
+        {dossiersGefilterd.length > 0 ? (
           <Button label={agentBezig ? 'Agent denkt na…' : 'Vraag AI-advies'} onPress={vraagAdvies} loading={agentBezig} />
         ) : null}
         {agentError ? <Text style={styles.error}>{agentError}</Text> : null}
@@ -355,7 +384,11 @@ export default function ProjectScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {dossiers === null && !error ? <ActivityIndicator color={colors.accent} style={{ marginTop: 24 }} /> : null}
-        {dossiers?.length === 0 ? <Text style={styles.empty}>Geen actieve dossiers gevonden in Outsmart.</Text> : null}
+        {dossiers && dossiersGefilterd.length === 0 ? (
+          <Text style={styles.empty}>
+            {dossiers.length === 0 ? 'Geen dossiers gevonden in Outsmart.' : 'Geen dossiers met deze status.'}
+          </Text>
+        ) : null}
 
         {teBestellen.length > 0 ? (
           <View>
@@ -366,10 +399,10 @@ export default function ProjectScreen() {
           </View>
         ) : null}
 
-        {dossiers && dossiers.length > 0 ? (
+        {dossiersGefilterd.length > 0 ? (
           <View>
             <SectionLabel>Dossiers</SectionLabel>
-            {dossiers.map((d) => {
+            {dossiersGefilterd.map((d) => {
               const namen = [d.klantNaam, d.naam].filter((n): n is string => !!n);
               const matchOpmeting =
                 opmetingen.find((o) => namen.some((n) => lijktOpzelfde(n, o.klant_naam))) ?? null;
@@ -399,6 +432,24 @@ const styles = StyleSheet.create({
   error: { fontFamily: fonts.body, color: colors.danger },
   empty: { fontFamily: fonts.body, fontSize: 14, color: colors.inkMuted, marginTop: 12 },
   kpiRow: { flexDirection: 'row', gap: 1, backgroundColor: colors.divider, borderWidth: 1, borderColor: colors.divider },
+  filterRow: { flexDirection: 'row', gap: 8 },
+  filterChip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: colors.divider,
+    backgroundColor: colors.white,
+  },
+  filterChipActief: { backgroundColor: colors.ink, borderColor: colors.ink },
+  filterChipText: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 11,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    color: colors.ink,
+  },
+  filterChipTextActief: { color: colors.white },
   card: { borderWidth: 1, borderColor: colors.divider, backgroundColor: colors.white, padding: 12, gap: 10, marginBottom: 8 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
   cardTitel: { fontFamily: fonts.heading, fontSize: 16, textTransform: 'uppercase', color: colors.ink, flexShrink: 1 },
