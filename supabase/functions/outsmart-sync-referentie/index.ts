@@ -6,9 +6,12 @@
 //      geweigerd, concept, ...) — ook niet-aanvaarde offertes bevatten
 //      bruikbare prijszetting.
 //   2. public.outsmart_duurreferentie — per UITGEVOERDE (EXECUTED) offerte
-//      de werkelijk bestede uren per hourtype-rol, zodat de agent het
-//      AANTAL uren voor een nieuwe klus kan gronden op vergelijkbare,
-//      echt afgewerkte klussen in plaats van vrij te gokken.
+//      het werkelijk bestede TOTAAL aantal arbeidsuren, zodat de agent een
+//      nieuwe klus kan gronden op vergelijkbare, echt afgewerkte klussen
+//      in plaats van vrij te gokken. Gebaseerd op de generieke "Werkuren"-
+//      regel die het personeel in de praktijk gebruikt (qln_material_
+//      hourtype wordt zo goed als nooit ingevuld), niet op het hourtype-
+//      veld zelf.
 //
 // Dit is bewust een aparte, manueel te triggeren sync-stap: alle offertes
 // in één keer ophalen duurt ~10s en ~57MB (2022 offertes, ~34k regels) —
@@ -99,20 +102,41 @@ Deno.serve(async (req) => {
     // Duurreferentie: enkel offertes met status UITGEVOERD leveren
     // betrouwbare "dit is hoeveel uur dit écht gekost heeft"-data op — een
     // CONCEPT of GEWEIGERDE offerte zegt niets over de werkelijke duur.
+    //
+    // BELANGRIJK (ontdekt na live controle): historisch wordt arbeid zo
+    // goed als nooit via qln_material_hourtype geboekt (slechts 142 van de
+    // 34.000 regels, en daarvan amper 6 bruikbare UITGEVOERDE offertes) —
+    // het personeel boekt uren gewoon als één generieke regel ("Werkuren",
+    // geen eenheid/materiaalcode) met het totaal in qln_amount. Dát is dus
+    // de echte signaalbron voor de duurreferentie, niet het hourtype-veld.
+    const isUrenRegel = (l: any) => {
+      if (l.qln_material_hourtype) return true;
+      const eenheid = String(l.qln_unit || '').toLowerCase();
+      if (eenheid === 'uur' || eenheid === 'u' || eenheid === 'h' || eenheid === 'uren') return true;
+      // Let op: GEEN \b-woordgrenzen gebruiken — "Werkuren" (de meest
+      // voorkomende historische omschrijving) heeft geen grens tussen "k"
+      // en "u", dus \buren\b zou dit net mislopen (bevestigd via test).
+      const omschr = String(l.qln_description || '').toLowerCase();
+      return omschr.includes('uren') || /\buur\b/.test(omschr);
+    };
+
     const duurRows: any[] = [];
     for (const q of alle) {
       if (q.quo_status !== 'EXECUTED') continue;
       const omschrijvingKlus = String(q.quo_description || q.quo_reference || '').trim();
       if (!omschrijvingKlus) continue;
       const urenPerHourtype: Record<string, number> = {};
+      let totaalUren = 0;
       for (const l of q.qln_lines ?? []) {
-        if (!l.qln_material_hourtype) continue;
-        const code = String(l.qln_material_hourtype);
+        if (!isUrenRegel(l)) continue;
         const aantal = Number(l.qln_amount) || 0;
         if (aantal <= 0) continue;
-        urenPerHourtype[code] = (urenPerHourtype[code] ?? 0) + aantal;
+        totaalUren += aantal;
+        if (l.qln_material_hourtype) {
+          const code = String(l.qln_material_hourtype);
+          urenPerHourtype[code] = (urenPerHourtype[code] ?? 0) + aantal;
+        }
       }
-      const totaalUren = Object.values(urenPerHourtype).reduce((a, b) => a + b, 0);
       if (totaalUren <= 0) continue;
       duurRows.push({
         quo_id: String(q.quo_id),

@@ -137,34 +137,39 @@ Deno.serve(async (req) => {
     const hourtypesRes = await outsmartGet(base, token, softwareToken, 'hourtypes', {});
     const hourtypes: any[] = (hourtypesRes.response ?? []).filter((h: any) => h.active !== '0');
     const hourtypesByCode = new Map(hourtypes.map((h) => [String(h.code), h]));
-    const hourtypeNaamByCode = new Map(hourtypes.map((h) => [String(h.code), h.name]));
 
     // 1d. Duurreferentie: het AANTAL uren voor een klus werd tot nu toe
-    //     volledig door Claude zelf geschat, zonder enige onderbouwing —
-    //     in tegenstelling tot de prijs/kostprijs, die wél uit de
-    //     hourtypes-catalogus komt. Deze tabel (gebouwd uit offertes met
-    //     status UITGEVOERD, zie outsmart-sync-referentie) geeft per
-    //     vergelijkbare, écht afgewerkte klus de werkelijk bestede uren per
-    //     rol — zodat de agent zich daarop kan baseren i.p.v. vrij te gokken.
+    //     volledig door Claude zelf geschat/"opgezocht" uit de meegegeven
+    //     voorbeelden — bleek in de praktijk nog steeds onrealistisch.
+    //     Daarom nu NIET meer aan Claude overgelaten: we berekenen het
+    //     TOTAAL aantal arbeidsuren voor deze klus hier zelf,
+    //     deterministisch, als een naar relevantie gewogen gemiddelde over
+    //     ALLE offertes met status UITGEVOERD waarvan de omschrijving
+    //     overlapt met het gevraagde werk (zie berekenAanbevolenTotaalUren).
+    //     Let op: het echte historische signaal is de generieke "Werkuren"-
+    //     regel die het personeel gebruikt (totaal over alle rollen samen),
+    //     niet qln_material_hourtype — dat wordt in de praktijk zo goed als
+    //     nooit ingevuld (zie outsmart-sync-referentie). Claude beslist
+    //     enkel nog WELKE rollen nodig zijn en hoe het totaal daarover
+    //     verdeeld wordt; het eindtotaal wordt nadien in code herschaald
+    //     naar het deterministisch berekende historische totaal.
     let duurReferentie: any[] = [];
+    let aanbevolenTotaalUren: { gemiddelde: number; aantalMatches: number } | null = null;
     if (serviceRoleKey) {
       const adminClient = createClient(supabaseUrl, serviceRoleKey);
       const { data: duurRows } = await adminClient
         .from('outsmart_duurreferentie')
-        .select('omschrijving, uren, totaal_uren, datum');
+        .select('omschrijving, totaal_uren, datum');
       if (duurRows && duurRows.length > 0) {
-        const alleDuur = duurRows.map((r) => ({
-          omschrijving: r.omschrijving,
-          urenPerRol: Object.fromEntries(
-            Object.entries((r.uren as Record<string, number>) ?? {}).map(([code, uren]) => [
-              hourtypeNaamByCode.get(code) ?? code,
-              uren,
-            ])
-          ),
+        const ruweRijen = duurRows.map((r) => ({
+          omschrijving: r.omschrijving as string,
           totaalUren: Number(r.totaal_uren) || 0,
-          datum: r.datum,
         }));
-        duurReferentie = kiesRelevanteReferentie(omschrijving, alleDuur, 15);
+        aanbevolenTotaalUren = berekenAanbevolenTotaalUren(omschrijving, ruweRijen);
+
+        // Enkel nog ter context/herkenning van gelijkaardige klussen in de
+        // prompt — het AANTAL zelf komt niet meer hieruit, zie hierboven.
+        duurReferentie = kiesRelevanteReferentie(omschrijving, ruweRijen, 15);
       }
     }
 
@@ -187,9 +192,15 @@ Splits arbeid over meerdere regels als verschillende rollen werk uitvoeren (bv. 
 
 ${
   duurReferentie.length > 0
-    ? `Voor het AANTAL uren per rol: baseer je op de werkelijk bestede uren van vergelijkbare, al UITGEVOERDE klussen hieronder (echte historische duur, geen schatting) — kies het aantal van de meest gelijkaardige klus, en pas het enkel aan als de gevraagde klus daar duidelijk van afwijkt (groter/kleiner/complexer):
+    ? `Ter herkenning: dit zijn vergelijkbare, al UITGEVOERDE klussen met hun werkelijke TOTALE arbeidsduur (alle rollen samen, zo boekt het personeel dit in de praktijk — er bestaat geen historische opsplitsing per rol):
 ${JSON.stringify(duurReferentie)}`
-    : 'Er is geen vergelijkbare al uitgevoerde klus gevonden in de historiek — schat het aantal uren zelf in op basis van de aard van het gevraagde werk.'
+    : 'Geen vergelijkbare al uitgevoerde klus gevonden in de historiek.'
+}
+
+Belangrijk over het AANTAL uren: ${
+  aanbevolenTotaalUren
+    ? `op basis van ${aanbevolenTotaalUren.aantalMatches} vergelijkbare uitgevoerde klus(sen) hierboven bedraagt de verwachte TOTALE arbeidsduur voor deze klus ongeveer ${round2(aanbevolenTotaalUren.gemiddelde)} uur (alle rollen samen) — dit getal is geen schatting van jou, het is berekend uit de echte historiek en wordt hoe dan ook aangehouden. Verdeel dit totaal logisch over de rollen die je kiest (bv. plaatser en loodgieter): geef per rol een "aantal" zodat de som van al je arbeidsregels dicht bij ${round2(aanbevolenTotaalUren.gemiddelde)} uur ligt. Focus dus op een realistische VERDELING tussen rollen, niet op het totaal zelf — dat ligt al vast.`
+    : 'er is geen vergelijkbare uitgevoerde klus gevonden, dus geef voor elke arbeidsregel je eigen best mogelijke schatting van het aantal uren.'
 }`;
 
     const parsed = await vraagClaudeTool(anthropicKey, prompt, 2048, {
@@ -236,12 +247,33 @@ ${JSON.stringify(duurReferentie)}`
     const voorgesteldeRegels: any[] = Array.isArray(parsed.regels) ? parsed.regels : [];
     if (voorgesteldeRegels.length === 0) throw new Error('De agent stelde geen offerteregels voor');
 
+    // 2b. Claude's eigen "aantal" per arbeidsregel is enkel een voorlopige
+    //     VERDELING tussen rollen — het TOTAAL wordt hier herschaald naar
+    //     het deterministisch berekende historische totaal (indien er een
+    //     match was), zodat het eindresultaat nooit afhangt van Claude's
+    //     eigen (onbetrouwbaar gebleken) aantalschatting.
+    let schaalfactor = 1;
+    if (aanbevolenTotaalUren) {
+      const claudeTotaal = voorgesteldeRegels
+        .filter((r) => r.hourtypeCode)
+        .reduce((som, r) => som + (Number(r.aantal) || 0), 0);
+      if (claudeTotaal > 0) {
+        schaalfactor = aanbevolenTotaalUren.gemiddelde / claudeTotaal;
+      }
+    }
+
     // 3. Outsmart-offerteregels opbouwen (totalen zelf berekend, niet
     //    afhankelijk van server-side herberekening — onbevestigd of Outsmart
     //    dat doet).
     const qlnLines = voorgesteldeRegels.map((r, i) => {
       const hourtype = r.hourtypeCode ? hourtypesByCode.get(String(r.hourtypeCode)) : null;
-      const aantal = Number(r.aantal) || 1;
+      // Aantal uren: voor arbeidsregels met een historisch totaal wordt
+      // Claude's eigen aantal (enkel een relatieve verdeling tussen rollen)
+      // herschaald zodat de som van alle arbeidsregels het deterministisch
+      // berekende historische totaal haalt — zie schaalfactor hierboven.
+      // Zonder historische match blijft Claude's eigen schatting gelden.
+      const ruweAantal = Number(r.aantal) || 1;
+      const aantal = hourtype ? roundToKwartier(ruweAantal * schaalfactor) : ruweAantal;
       // Werkuren: prijs/inkoopprijs komen altijd uit het hourtype zelf, niet
       // uit Claude's eigen schatting — dat was precies waarom historische
       // "Werkuren"-regels onderling verschillende prijzen hadden.
@@ -335,18 +367,27 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/** Rondt af op een kwartier (0.25u) — realistische granulariteit voor
+ *  geboekte arbeidsuren, zonder valse precisie van een gewogen gemiddelde
+ *  (bv. 3.666...) rechtstreeks over te nemen. */
+function roundToKwartier(n: number): number {
+  return Math.max(0.25, Math.round(n * 4) / 4);
+}
+
+function woordenSet(s: string): Set<string> {
+  return new Set((s.toLowerCase().match(/[a-z0-9À-ž]{3,}/g) ?? []));
+}
+
 /** Selecteert de meest relevante rijen voor deze aanvraag — op woord-overlap
  *  met de gevraagde omschrijving, niet blind afgekapt. Bij geen enkele match
  *  (bv. heel generieke vraag) valt terug op de meest recent gebruikte/
  *  uitgevoerde rijen. Generiek herbruikt voor zowel de prijsreferentie als
  *  de duurreferentie (beide hebben een `omschrijving`-veld). */
 function kiesRelevanteReferentie(omschrijving: string, alle: any[], max: number): any[] {
-  const woorden = (s: string) =>
-    new Set((s.toLowerCase().match(/[a-z0-9À-ž]{3,}/g) ?? []));
-  const queryWoorden = woorden(omschrijving);
+  const queryWoorden = woordenSet(omschrijving);
 
   const gescoord = alle.map((r) => {
-    const rWoorden = woorden(r.omschrijving ?? '');
+    const rWoorden = woordenSet(r.omschrijving ?? '');
     let score = 0;
     for (const w of queryWoorden) if (rWoorden.has(w)) score++;
     return { r, score };
@@ -358,6 +399,40 @@ function kiesRelevanteReferentie(omschrijving: string, alle: any[], max: number)
   });
 
   return gescoord.slice(0, max).map((g) => g.r);
+}
+
+/** Berekent het verwachte TOTAAL aantal arbeidsuren voor deze klus
+ *  deterministisch uit de historiek, in plaats van dit aan Claude's eigen
+ *  schatting over te laten: een naar relevantie (woord-overlap met de
+ *  gevraagde omschrijving) gewogen gemiddelde over ALLE uitgevoerde
+ *  offertes die minstens één woord gemeen hebben met het gevraagde werk.
+ *  Offertes zonder enige overlap tellen niet mee — zo trekt een
+ *  irrelevante klus het gemiddelde niet scheef. Geeft null als er geen
+ *  enkele relevante historische match is; dan blijft Claude's eigen
+ *  schatting de terugval. */
+function berekenAanbevolenTotaalUren(
+  omschrijving: string,
+  rijen: { omschrijving: string; totaalUren: number }[]
+): { gemiddelde: number; aantalMatches: number } | null {
+  const queryWoorden = woordenSet(omschrijving);
+  let totaalGewogen = 0;
+  let totaalGewicht = 0;
+  let aantalMatches = 0;
+
+  for (const rij of rijen) {
+    if (!(rij.totaalUren > 0)) continue;
+    const rWoorden = woordenSet(rij.omschrijving ?? '');
+    let score = 0;
+    for (const w of queryWoorden) if (rWoorden.has(w)) score++;
+    if (score <= 0) continue;
+
+    totaalGewogen += rij.totaalUren * score;
+    totaalGewicht += score;
+    aantalMatches++;
+  }
+
+  if (totaalGewicht <= 0) return null;
+  return { gemiddelde: totaalGewogen / totaalGewicht, aantalMatches };
 }
 
 /** Meest voorkomende quo_qus_id over een lijst offertes — gebruikt als
