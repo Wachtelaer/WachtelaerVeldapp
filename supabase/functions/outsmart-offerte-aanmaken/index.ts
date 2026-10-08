@@ -69,10 +69,28 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const adminClient = serviceRoleKey ? createClient(supabaseUrl, serviceRoleKey) : null;
     let referentieRegels: any[] = [];
+    // Laatst gekende echte inkoopprijs per artikelcode — los van relevantie
+    // voor déze aanvraag, want de kostprijs van een artikel is een vaste
+    // eigenschap van dat artikel, niet van de klus. Gebruikt in stap 2a om
+    // de inkoopprijs te gronden op het ECHTE, finale (materiaal-catalogus-
+    // gematchte) artikel, in plaats van op Claude's eigen schatting — die
+    // sowieso nog verwees naar Claude's eigen, vóór de materiaal-match
+    // voorgestelde omschrijving/artikel, niet naar het uiteindelijke.
+    const inkoopprijsPerArtikelcode = new Map<string, number>();
     if (adminClient) {
-      const { data: referentieRows } = await adminClient
-        .from('outsmart_prijsreferentie')
-        .select('omschrijving, eenheid, prijs, inkoopprijs, btw, materiaal_code, sectie, laatst_gebruikt');
+      // Gepagineerd ophalen (zie fetchAllRows): PostgREST kapt elke select()
+      // standaard af op 1000 rijen, ONGEACHT een expliciete .limit() boven
+      // die 1000 (live bevestigd: .limit(10000) gaf nog steeds maar 1000
+      // rijen terug) — bij 4417+ rijen in deze tabel bleef zo'n 77% ervan
+      // onzichtbaar, en zonder ORDER BY was het bovendien WELKE 1000 rijen
+      // dat waren niet eens stabiel tussen aanroepen (bv. de inkoopprijs van
+      // een artikel zoals "Veiligheidsgroep"/K6 verscheen in de ene aanroep
+      // wel en de andere niet, puur toeval).
+      const referentieRows = await fetchAllRows(
+        adminClient,
+        'outsmart_prijsreferentie',
+        'omschrijving, eenheid, prijs, inkoopprijs, btw, materiaal_code, sectie, laatst_gebruikt'
+      );
       if (referentieRows && referentieRows.length > 0) {
         const alle = referentieRows.map((r) => ({
           omschrijving: r.omschrijving,
@@ -85,6 +103,9 @@ Deno.serve(async (req) => {
           laatstGebruikt: r.laatst_gebruikt,
         }));
         referentieRegels = kiesRelevanteReferentie(omschrijving, alle, 200);
+        for (const r of alle) {
+          if (r.materiaalCode && r.inkoopprijs > 0) inkoopprijsPerArtikelcode.set(r.materiaalCode, r.inkoopprijs);
+        }
       }
     }
 
@@ -156,9 +177,9 @@ Deno.serve(async (req) => {
     let duurReferentie: any[] = [];
     let aanbevolenTotaalUren: { gemiddelde: number; aantalMatches: number } | null = null;
     if (adminClient) {
-      const { data: duurRows } = await adminClient
-        .from('outsmart_duurreferentie')
-        .select('omschrijving, totaal_uren, datum');
+      // Zelfde reden als bij outsmart_prijsreferentie hierboven: gepagineerd
+      // ophalen i.p.v. de standaard (en niet-overstembare) 1000-rijenkap.
+      const duurRows = await fetchAllRows(adminClient, 'outsmart_duurreferentie', 'omschrijving, totaal_uren, datum');
       if (duurRows && duurRows.length > 0) {
         const ruweRijen = duurRows.map((r) => ({
           omschrijving: r.omschrijving as string,
@@ -256,6 +277,15 @@ Belangrijk over het AANTAL uren: ${
     //     overschreven met het echte artikel; anders blijft Claude's eigen
     //     voorstel gewoon staan (zelfde "nooit blind vertrouwen, wel altijd
     //     een werkende terugval"-patroon als bij de uren).
+    //
+    //     Inkoopprijs is hierbij altijd apart gegrond (nooit Claude's eigen
+    //     schatting): outsmart_materialen bevat zelf geen kostprijs-veld
+    //     (enkel verkoopprijs), en Claude's "inkoopprijs" sloeg sowieso op
+    //     haar eigen, hier mogelijk net overschreven voorstel — dus altijd
+    //     opzoeken op het UITEINDELIJKE artikelnummer (match, of anders
+    //     Claude's eigen materiaalCode als die een bestaand artikel bleek te
+    //     zijn) in de prijsreferentie, met 0 als eerlijke "onbekend"-
+    //     terugval i.p.v. een inkoopprijs die bij een ander artikel hoorde.
     const MIN_MATERIAAL_SCORE = 0.55;
     if (adminClient) {
       await Promise.all(
@@ -266,10 +296,13 @@ Belangrijk over het AANTAL uren: ${
             min_score: MIN_MATERIAAL_SCORE,
           });
           const match = Array.isArray(data) ? data[0] : null;
-          if (!match) return;
-          r.materiaalCode = match.code;
-          r.omschrijving = match.omschrijving;
-          if (Number(match.prijs) > 0) r.prijs = Number(match.prijs);
+          if (match) {
+            r.materiaalCode = match.code;
+            r.omschrijving = match.omschrijving;
+            if (Number(match.prijs) > 0) r.prijs = Number(match.prijs);
+          }
+          const inkoopprijs = r.materiaalCode ? inkoopprijsPerArtikelcode.get(String(r.materiaalCode)) : undefined;
+          r.inkoopprijs = inkoopprijs ?? 0;
         })
       );
     }
@@ -365,7 +398,16 @@ Belangrijk over het AANTAL uren: ${
       throw new Error('Outsmart gaf geen offerte-id terug na aanmaken');
     }
 
-    const margeEuro = (created.qln_lines ?? []).reduce((som: number, l: any) => {
+    // Marge berekend uit ONZE EIGEN qlnLines, niet uit created.qln_lines:
+    // Outsmart's quotations-POST blijkt purchase_price stil te negeren — live
+    // getest (ook onder andere veldnamen: qln_purchase_price, cost_price) —
+    // en geeft op elke regel altijd purchase_price "0.00000" terug, ongeacht
+    // wat er verstuurd werd. Op basis van dat echo'de (altijd 0) bedrag
+    // rekenen gaf dus een margePercent van steevast 100% voor ELKE offerte
+    // die deze agent ooit aanmaakte — zinloze info. Onze eigen qlnLines
+    // bevatten de correcte, hier zelf gegronde inkoopprijs (zie stap 2a) en
+    // dezelfde totalen die we net naar Outsmart verstuurden.
+    const margeEuro = qlnLines.reduce((som, l) => {
       const omzet = Number(l.qln_total_excl) || 0;
       const kost = (Number(l.purchase_price) || 0) * (Number(l.qln_amount) || 0);
       return som + (omzet - kost);
@@ -379,7 +421,19 @@ Belangrijk over het AANTAL uren: ${
         status: created.quo_status,
         bedrag: created.quo_amount,
         url: created.url ?? null,
-        regels: qlnLines.map((l) => ({ omschrijving: l.qln_description, aantal: Number(l.qln_amount), eenheid: l.qln_unit, prijs: Number(l.qln_price), sectie: l.section || null })),
+        // materiaalCode/inkoopprijs toegevoegd zodat de inkoopprijs ook
+        // zichtbaar is in de app zelf — Outsmart zelf toont ze toch niet
+        // (zie hierboven), dus dit scherm is de enige plek waar de
+        // gebruiker deze waarde nog kan zien.
+        regels: qlnLines.map((l) => ({
+          omschrijving: l.qln_description,
+          aantal: Number(l.qln_amount),
+          eenheid: l.qln_unit,
+          prijs: Number(l.qln_price),
+          inkoopprijs: Number(l.purchase_price),
+          materiaalCode: l.qln_material_code,
+          sectie: l.section || null,
+        })),
         margeEuro,
         margePercent,
       },
@@ -541,6 +595,31 @@ function berekenAanbevolenTotaalUren(
 
   if (totaalGewicht <= 0) return null;
   return { gemiddelde: totaalGewogen / totaalGewicht, aantalMatches };
+}
+
+/** Haalt ALLE rijen van een tabel op, in pagina's van 1000 — nodig omdat
+ *  PostgREST elke select() hard afkapt op 1000 rijen, ONGEACHT een
+ *  expliciete .limit() erboven (live bevestigd: .limit(10000) op een tabel
+ *  met 4417 rijen gaf nog steeds maar 1000 rijen terug). Zonder dit bleef
+ *  een groot deel van outsmart_prijsreferentie/outsmart_duurreferentie
+ *  onzichtbaar — en, omdat er geen ORDER BY was, was het bovendien niet
+ *  eens stabiel WELKE 1000 rijen dat waren tussen de ene aanroep en de
+ *  andere. */
+async function fetchAllRows(adminClient: ReturnType<typeof createClient>, table: string, columns: string): Promise<any[]> {
+  const PAGE = 1000;
+  const alle: any[] = [];
+  for (let van = 0; ; van += PAGE) {
+    const { data, error } = await adminClient
+      .from(table)
+      .select(columns)
+      .order('id', { ascending: true })
+      .range(van, van + PAGE - 1);
+    if (error) throw new Error(`${table}: ${error.message}`);
+    if (!data || data.length === 0) break;
+    alle.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return alle;
 }
 
 /** Meest voorkomende quo_qus_id over een lijst offertes — gebruikt als

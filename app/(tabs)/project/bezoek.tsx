@@ -225,7 +225,8 @@ export default function KlantenbezoekScreen() {
                 </Text>
                 {resultaat.regels.map((r, i) => (
                   <Text key={i} style={styles.regel}>
-                    • {r.omschrijving} — {r.aantal} {r.eenheid}
+                    • {r.omschrijving} — {r.aantal} {r.eenheid} · {formatBedrag(String(r.prijs))}
+                    {r.inkoopprijs > 0 ? ` (inkoop ${formatBedrag(String(r.inkoopprijs))})` : ''}
                   </Text>
                 ))}
                 {toelichting ? <Text style={styles.toelichting}>{toelichting}</Text> : null}

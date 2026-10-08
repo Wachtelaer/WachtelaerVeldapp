@@ -5,6 +5,11 @@ export interface NieuweOfferteRegel {
   aantal: number;
   eenheid: string;
   prijs: number;
+  /** Kostprijs per eenheid — Outsmart zelf toont/bewaart dit niet (de
+   *  quotations-API negeert purchase_price bij het aanmaken), dus dit
+   *  scherm is de enige plek waar deze waarde nog zichtbaar is. */
+  inkoopprijs: number;
+  materiaalCode: string | null;
 }
 
 export interface NieuweOfferte {
