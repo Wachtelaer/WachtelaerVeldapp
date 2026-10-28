@@ -45,18 +45,26 @@ export async function createRapport(input: NieuwRapportInput): Promise<string> {
 }
 
 export async function uploadFotos(werfId: string, rapportId: string, fotoUris: string[]) {
+  // Elke foto apart vangen (zie createFormulier voor dezelfde aanpak): dit
+  // rapport kan via de offline-wachtrij pas later alsnog verstuurd worden,
+  // en tegen dan kan één lokale foto al verdwenen zijn uit het toestel-
+  // cache. Dat mag het rapport zelf (of de overige foto's) niet blokkeren.
   for (const uri of fotoUris) {
-    const { blob, ext, contentType } = await resolveImageBlob(uri);
-    const filename = `${Crypto.randomUUID()}.${ext}`;
-    const path = `${werfId}/${rapportId}/${filename}`;
+    try {
+      const { blob, ext, contentType } = await resolveImageBlob(uri);
+      const filename = `${Crypto.randomUUID()}.${ext}`;
+      const path = `${werfId}/${rapportId}/${filename}`;
 
-    const { error: uploadError } = await supabase.storage.from(FOTOS_BUCKET).upload(path, blob, { contentType });
-    if (uploadError) throw uploadError;
+      const { error: uploadError } = await supabase.storage.from(FOTOS_BUCKET).upload(path, blob, { contentType });
+      if (uploadError) throw uploadError;
 
-    const { error: rowError } = await supabase
-      .from('werfrapport_fotos')
-      .insert({ rapport_id: rapportId, storage_path: path, label: filename });
-    if (rowError) throw rowError;
+      const { error: rowError } = await supabase
+        .from('werfrapport_fotos')
+        .insert({ rapport_id: rapportId, storage_path: path, label: filename });
+      if (rowError) throw rowError;
+    } catch (e) {
+      console.warn(`Foto overslaan voor rapport ${rapportId} (${uri}):`, e);
+    }
   }
 }
 

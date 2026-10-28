@@ -17,11 +17,17 @@ import {
 import { IBMPlexMono_400Regular, IBMPlexMono_500Medium } from '@expo-google-fonts/ibm-plex-mono';
 
 import { AuthProvider, useAuth } from '@/context/AuthProvider';
+import { startConnectivityWatcher } from '@/lib/offlineQueue';
 import { colors } from '@/lib/theme';
 
 export { ErrorBoundary } from 'expo-router';
 
 SplashScreen.preventAutoHideAsync();
+
+// Started once, here, so a flush of the offline queue is attempted as soon
+// as the app launches (if already online) — not only when a screen happens
+// to be mounted and observes a live reconnect. See lib/offlineQueue.ts.
+startConnectivityWatcher();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({

@@ -34,16 +34,28 @@ export async function createFormulier(input: NieuwFormulierInput): Promise<strin
     .single();
   if (error) throw error;
 
+  // Elke foto apart vangen: dit formulier kan via de offline-wachtrij pas
+  // dagen later alsnog verstuurd worden, en tegen dan kan het besturings-
+  // systeem de lokale foto-cache al opgeruimd hebben. Eén ontbrekende foto
+  // mocht voorheen de hele indiening blokkeren — bij een herpoging vanuit de
+  // wachtrij werd dan de formulier-rij een tweede keer aangemaakt (dubbel),
+  // en bleef het item voor altijd in de wachtrij hangen omdat diezelfde foto
+  // bij elke volgende poging opnieuw faalde. De antwoorden zelf zijn het
+  // belangrijkste; een enkele verloren foto mag dat nooit met zich meeslepen.
   for (const uri of input.fotoUris) {
-    const { blob, ext, contentType } = await resolveImageBlob(uri);
-    const filename = `${Crypto.randomUUID()}.${ext}`;
-    const path = `${formulier.id}/${filename}`;
-    const { error: uploadError } = await supabase.storage.from(FOTOS_BUCKET).upload(path, blob, { contentType });
-    if (uploadError) throw uploadError;
-    const { error: rowError } = await supabase
-      .from('formulier_fotos')
-      .insert({ formulier_id: formulier.id, storage_path: path, label: filename });
-    if (rowError) throw rowError;
+    try {
+      const { blob, ext, contentType } = await resolveImageBlob(uri);
+      const filename = `${Crypto.randomUUID()}.${ext}`;
+      const path = `${formulier.id}/${filename}`;
+      const { error: uploadError } = await supabase.storage.from(FOTOS_BUCKET).upload(path, blob, { contentType });
+      if (uploadError) throw uploadError;
+      const { error: rowError } = await supabase
+        .from('formulier_fotos')
+        .insert({ formulier_id: formulier.id, storage_path: path, label: filename });
+      if (rowError) throw rowError;
+    } catch (e) {
+      console.warn(`Foto overslaan voor formulier ${formulier.id} (${uri}):`, e);
+    }
   }
 
   return formulier.id;

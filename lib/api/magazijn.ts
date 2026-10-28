@@ -32,18 +32,26 @@ export async function createMelding(input: NieuweMeldingInput): Promise<string> 
     .single();
   if (error) throw error;
 
+  // Elke foto apart vangen (zie createFormulier voor dezelfde aanpak): deze
+  // melding kan via de offline-wachtrij pas later alsnog verstuurd worden,
+  // en tegen dan kan één lokale foto al verdwenen zijn uit het toestel-
+  // cache. Dat mag de melding zelf (of de overige foto's) niet blokkeren.
   for (const uri of input.fotoUris) {
-    const { blob, ext, contentType } = await resolveImageBlob(uri);
-    const filename = `${Crypto.randomUUID()}.${ext}`;
-    const path = `${melding.id}/${filename}`;
+    try {
+      const { blob, ext, contentType } = await resolveImageBlob(uri);
+      const filename = `${Crypto.randomUUID()}.${ext}`;
+      const path = `${melding.id}/${filename}`;
 
-    const { error: uploadError } = await supabase.storage.from(FOTOS_BUCKET).upload(path, blob, { contentType });
-    if (uploadError) throw uploadError;
+      const { error: uploadError } = await supabase.storage.from(FOTOS_BUCKET).upload(path, blob, { contentType });
+      if (uploadError) throw uploadError;
 
-    const { error: rowError } = await supabase
-      .from('magazijn_meldingen_fotos')
-      .insert({ melding_id: melding.id, storage_path: path });
-    if (rowError) throw rowError;
+      const { error: rowError } = await supabase
+        .from('magazijn_meldingen_fotos')
+        .insert({ melding_id: melding.id, storage_path: path });
+      if (rowError) throw rowError;
+    } catch (e) {
+      console.warn(`Foto overslaan voor melding ${melding.id} (${uri}):`, e);
+    }
   }
 
   return melding.id;

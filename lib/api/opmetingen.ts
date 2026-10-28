@@ -34,16 +34,24 @@ export async function createOpmeting(input: NieuweOpmetingInput): Promise<string
     .single();
   if (error) throw error;
 
+  // Elke foto apart vangen (zie createFormulier voor dezelfde aanpak): deze
+  // opmeting kan via de offline-wachtrij pas later alsnog verstuurd worden,
+  // en tegen dan kan één lokale foto al verdwenen zijn uit het toestel-
+  // cache. Dat mag de opmeting zelf (of de overige foto's) niet blokkeren.
   for (const uri of input.fotoUris) {
-    const { blob, ext, contentType } = await resolveImageBlob(uri);
-    const filename = `${Crypto.randomUUID()}.${ext}`;
-    const path = `${opmeting.id}/${filename}`;
-    const { error: uploadError } = await supabase.storage.from(FOTOS_BUCKET).upload(path, blob, { contentType });
-    if (uploadError) throw uploadError;
-    const { error: rowError } = await supabase
-      .from('opmeting_fotos')
-      .insert({ opmeting_id: opmeting.id, storage_path: path, label: filename });
-    if (rowError) throw rowError;
+    try {
+      const { blob, ext, contentType } = await resolveImageBlob(uri);
+      const filename = `${Crypto.randomUUID()}.${ext}`;
+      const path = `${opmeting.id}/${filename}`;
+      const { error: uploadError } = await supabase.storage.from(FOTOS_BUCKET).upload(path, blob, { contentType });
+      if (uploadError) throw uploadError;
+      const { error: rowError } = await supabase
+        .from('opmeting_fotos')
+        .insert({ opmeting_id: opmeting.id, storage_path: path, label: filename });
+      if (rowError) throw rowError;
+    } catch (e) {
+      console.warn(`Foto overslaan voor opmeting ${opmeting.id} (${uri}):`, e);
+    }
   }
 
   return opmeting.id;

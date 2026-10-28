@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useSyncExternalStore } from 'react';
+import { useEffect, useCallback, useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 
@@ -96,33 +96,46 @@ export function getQueueLength() {
   return queue.length;
 }
 
-/** Tries to send every queued item. Leaves failures queued for the next attempt. */
+let flushInFlight: Promise<void> | null = null;
+
+/** Tries to send every queued item. Leaves failures queued for the next
+ *  attempt. Coalesces overlapping calls (startup + reconnect can fire at
+ *  nearly the same time) into a single in-flight run instead of racing two
+ *  flushes against the same queue. */
 export async function flushQueue() {
-  await hydrate();
-  const remaining: QueuedAction[] = [];
-  for (const action of queue) {
-    try {
-      if (action.kind === 'submit_rapport') {
-        await createRapport(action.payload);
-      } else if (action.kind === 'submit_reactie') {
-        await addReactie(action.payload.rapportId, action.payload.auteurId, action.payload.tekst);
-      } else if (action.kind === 'submit_chat_bericht') {
-        await sendMessage(action.payload);
-      } else if (action.kind === 'submit_opmeting') {
-        await createOpmeting(action.payload);
-      } else if (action.kind === 'submit_verlofaanvraag') {
-        await createAanvraag(action.payload);
-      } else if (action.kind === 'submit_magazijn_melding') {
-        await createMelding(action.payload);
-      } else {
-        await createFormulier(action.payload);
+  if (flushInFlight) return flushInFlight;
+  flushInFlight = (async () => {
+    await hydrate();
+    const remaining: QueuedAction[] = [];
+    for (const action of queue) {
+      try {
+        if (action.kind === 'submit_rapport') {
+          await createRapport(action.payload);
+        } else if (action.kind === 'submit_reactie') {
+          await addReactie(action.payload.rapportId, action.payload.auteurId, action.payload.tekst);
+        } else if (action.kind === 'submit_chat_bericht') {
+          await sendMessage(action.payload);
+        } else if (action.kind === 'submit_opmeting') {
+          await createOpmeting(action.payload);
+        } else if (action.kind === 'submit_verlofaanvraag') {
+          await createAanvraag(action.payload);
+        } else if (action.kind === 'submit_magazijn_melding') {
+          await createMelding(action.payload);
+        } else {
+          await createFormulier(action.payload);
+        }
+      } catch {
+        remaining.push(action);
       }
-    } catch {
-      remaining.push(action);
     }
+    queue = remaining;
+    await persist();
+  })();
+  try {
+    await flushInFlight;
+  } finally {
+    flushInFlight = null;
   }
-  queue = remaining;
-  await persist();
 }
 
 export function useQueueLength() {
@@ -137,22 +150,87 @@ export function useQueueLength() {
   );
 }
 
-/** Online/offline status plus a queue that auto-flushes on reconnect. */
-export function useConnectivity() {
-  const [isOnline, setIsOnline] = useState(true);
-  const queued = useQueueLength();
+// ---------------------------------------------------------------------------
+// Connectivity — a single, app-wide watcher instead of a per-screen one.
+//
+// Earlier version ran this entirely inside useConnectivity()'s own
+// useEffect, with isOnline starting at `true` on every mount and only
+// flushing on an observed false→true transition. Since every screen
+// renders its own <AppHeader> (which calls useConnectivity()), a fresh
+// hook instance — and a fresh "isOnline = true" — was created on every
+// navigation, so the transition that triggers a flush almost never
+// actually got observed in the wild: a tech filling in a form offline,
+// then only regaining signal on a *different* screen (or after reopening
+// the app later, already online), left the item stuck in AsyncStorage
+// forever with no further attempt ever made. Confirmed live: 13
+// technicians have the "formulieren" feature, but only 1 has ever had a
+// submission actually reach the formulieren table — exactly the signature
+// of queued items silently never being retried.
+//
+// Fixed by moving the NetInfo subscription + flush trigger to a single
+// module-level watcher (started once, from the root layout), which:
+//   - flushes immediately on startup if already online (covers "closed the
+//     app offline, reopened later with a connection"), and
+//   - flushes on EVERY online reading thereafter, not just a transition
+//     (covers "went online on a different screen than the one queued it").
+// ---------------------------------------------------------------------------
 
+let isOnlineGlobal = true;
+const onlineListeners = new Set<() => void>();
+let watcherStarted = false;
+
+function notifyOnline() {
+  for (const l of onlineListeners) l();
+}
+
+function setOnline(next: boolean) {
+  if (next === isOnlineGlobal) {
+    if (next) flushQueue();
+    return;
+  }
+  isOnlineGlobal = next;
+  notifyOnline();
+  if (next) flushQueue();
+}
+
+/** Starts the single, app-wide connectivity watcher. Safe to call many
+ *  times (e.g. once per AppHeader mount) — only the first call does
+ *  anything. Call this as early as possible (root layout) so a flush is
+ *  attempted on every app launch, not just when a screen happens to catch
+ *  a live reconnect. */
+export function startConnectivityWatcher() {
+  if (watcherStarted) return;
+  watcherStarted = true;
+
+  NetInfo.fetch().then((state) => {
+    setOnline(!!state.isConnected && state.isInternetReachable !== false);
+  });
+
+  NetInfo.addEventListener((state) => {
+    setOnline(!!state.isConnected && state.isInternetReachable !== false);
+  });
+}
+
+function useQueueOnline() {
+  return useSyncExternalStore(
+    (onChange) => {
+      onlineListeners.add(onChange);
+      return () => onlineListeners.delete(onChange);
+    },
+    () => isOnlineGlobal,
+    () => true
+  );
+}
+
+/** Online/offline status plus a queue that auto-flushes on reconnect (and
+ *  on startup — see startConnectivityWatcher above). */
+export function useConnectivity() {
   useEffect(() => {
-    const unsub = NetInfo.addEventListener((state) => {
-      const nowOnline = !!state.isConnected && state.isInternetReachable !== false;
-      setIsOnline((prevOnline) => {
-        if (!prevOnline && nowOnline) flushQueue();
-        return nowOnline;
-      });
-    });
-    return unsub;
+    startConnectivityWatcher();
   }, []);
 
+  const isOnline = useQueueOnline();
+  const queued = useQueueLength();
   const flushNow = useCallback(() => flushQueue(), []);
 
   return { isOnline, queued, flushNow };
